@@ -58,31 +58,28 @@ def p_comparison_type(diff_size, same_size, types_label, out):
     ax2 = plt.subplot(grid[0, 2:])  # same size
 
     sizes_acc = diff_size[diff_size > 0]
-    sizes_label = [i+2 for i in np.where(diff_size > 0)]
+    sizes_label = np.where(diff_size > 0)[0] + 2
     max_acc = sizes_acc.max()
-    m_size_idx = np.where(sizes_acc == max_acc)[0]
+    m_size_idx = np.where(sizes_acc == max_acc)[0][0] + 1
     ax1.bar(range(1, len(sizes_acc)+1), sizes_acc, color='grey')
     ax1.set_ylim(0, 1)
     ax1.set_xlabel('Size',)
-    ax1.set_xticks(range(1, len(sizes_acc)+1), )
+    ax1.set_xticks(range(1, len(sizes_acc)+1))
     ax1.set_xticklabels(sizes_label, fontdict={'Size': 12})
     ax1.set_ylabel('Acc', fontdict={'Size': 15})
-    ax1.text(m_size_idx, max_acc, f'{max_acc:.3f}', 
+    ax1.text(m_size_idx, max_acc+0.1, f'{max_acc:.3f}', 
              ha='center', va='bottom', fontsize=10, fontweight='bold')
 
     types_acc = same_size[same_size > 0]
     types_label = np.array(types_label)[same_size > 0]
-    m_size_idx = np.where(types_acc == max_acc)[0]
+    m_size_idx = np.where(types_acc == max_acc)[0][0] + 1
     ax2.bar(range(1, len(types_acc)+1), types_acc, color='grey')
     ax2.set_ylim(0, 1)
     ax2.set_xlabel('Type')
-    #ax2.set_figheight(15)
     ax2.set_xticks(range(1, len(types_acc)+1))
-    ax2.set_xticklabels(types_label, fontsize=8, rotation=-35)  #,
-    # ax2.set_ylabel('Acc')
-    ax2.text(m_size_idx, max_acc, f'{max_acc:.3f}',
+    ax2.set_xticklabels(types_label, fontsize=8, rotation=-35)  #
+    ax2.text(m_size_idx, max_acc+0.1, f'{max_acc:.3f}',
              ha='center', va='bottom', fontsize=10, fontweight='bold')
-    # fig.tight_layout()
     plt.tight_layout()
     plt.savefig(out, bbox_inches="tight")
 
@@ -129,8 +126,8 @@ def p_fs(score_ls, out):
     plt.figure()
     plt.plot(range(1, len(score_ls) + 1), score_ls)
     max_acc = max(score_ls)
-    best_n = score_ls.index(max_acc)
-    plt.scatter(best_n + 1, max_acc, marker='*', c='r')
-    plt.text(best_n + 1, max_acc + 0.002, f'{best_n+1}, {max_acc:.4f}',
+    best_n = score_ls.index(max_acc) + 1
+    plt.scatter(best_n, max_acc, marker='*', c='r')
+    plt.text(best_n, max_acc + 0.002, f'{best_n+1}, {max_acc:.4f}',
              ha='center', va='bottom', fontsize=6, fontweight='bold')
     plt.savefig(out, dpi=600)

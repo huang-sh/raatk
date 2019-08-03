@@ -6,32 +6,15 @@
 
 """
 
-import os
-import sys
-import csv
-import copy
-import json
-from concurrent import futures
-import math
-from itertools import product
-from collections import Counter
-from functools import wraps, partial
-
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import matthews_corrcoef
-from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, recall_score
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import recall_score, precision_score, matthews_corrcoef, multilabel_confusion_matrix
-from sklearn.model_selection import StratifiedShuffleSplit, StratifiedKFold
-from sklearn.preprocessing import StandardScaler, Normalizer, LabelEncoder
+from sklearn.model_selection import GridSearchCV, train_test_split, LeaveOneOut
+from sklearn.preprocessing import Normalizer, LabelEncoder
+from sklearn.metrics import multilabel_confusion_matrix
+from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
-from sklearn.feature_selection import SelectKBest, VarianceThreshold
-from joblib import dump, load
 
 
 class Evaluate:
@@ -52,25 +35,22 @@ class Evaluate:
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
-            y_pro = fit_clf.predict_proba(x_test)[:, 1] # .ravel()
             y_pre_arr[test_idx] = y_pre
-            y_pro_arr[test_idx] = y_pro
-        metric = self.metrics_(y, y_pre_arr, y_pro_arr)
-        return metric
+        metric = self.metrics_(y, y_pre_arr)
+        cm = multilabel_confusion_matrix(y, y_pre_arr)
+        return metric, cm
     def kfold(self, k):
         skf = StratifiedKFold(n_splits=k, random_state=1)
         ss = skf.split(self.x, self.y)
         clf = self.model
         all_metrics = 0
-        all_auc = 0
         X, y = self.x, self.y
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
-            y_pro = fit_clf.predict_proba(x_test)[:, 1]  # [np.arange(len(y_pre)), y_pre]
-            metric = self.metrics_(y_true, y_pre, y_pro) # sn, sp, presision, acc, mcc, fpr, tpr,
+            metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
             all_metrics = np.add(all_metrics, metric)
         k_mean_metric = all_metrics / k
         return k_mean_metric
@@ -80,11 +60,11 @@ class Evaluate:
                                                 random_state=1, test_size=test_size)
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
-        y_pro = fit_clf.predict_proba(x_test)[:, 1] # [np.arange(len(y_pre)), y_pre]
-        metric = self.metrics_(y_true, y_pre, y_pro)
-        return metric
+        metric = self.metrics_(y_true, y_pre)
+        cm = multilabel_confusion_matrix(y_true, y_pre)
+        return metric, cm
 
-    def metrics_(self, y_true, y_pre, y_pro):
+    def metrics_(self, y_true, y_pre):
         le = LabelEncoder()
         y_true, y_pre = y_true.ravel(), y_pre.ravel()
         unique_label = np.unique(y_true)

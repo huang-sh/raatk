@@ -1,15 +1,16 @@
 import os
 import csv
-import zipfile
+import re
 import sqlite3
+from itertools import product
 from concurrent import futures
 
 import numpy as np
-import pysnooper
+from sklearn.preprocessing import Normalizer
+from sklearn.model_selection import train_test_split
 
-import feature
+import draw
 
-MAX_WORKERS = 676
 BASE_PATH = os.path.dirname(__file__)
 RAA_DB = os.path.join(BASE_PATH, 'raa_data.db')
 NAA = ['A', 'G', 'S', 'T', 'R', 'Q', 'E', 'K', 'N', 'D',
@@ -70,6 +71,25 @@ def reduce(seqs, aa, raa=None):
         yield title, seq
 
 
+def seq_aac(seqs, raa, n=1):
+    """ extract aac feature
+    :param seqs: seq lines
+    :param raa: representative aa, list
+    :param n: k-mer, int
+    :return:
+    """
+    aa = [''.join(aa) for aa in product(raa, repeat=n)]
+    for seq in seqs:
+        title, seq = seq
+        aa_fre = []
+        seq_len = len(seq) -n + 1
+        for a in aa:
+            reg = re.compile(f"(?={a})")
+            num = len(reg.findall(seq))
+            aa_fre.append(num)
+        aa_fre = [seq.count(i)/seq_len for i in aa]  # (len(seq)-n+1)
+        yield title, aa_fre
+
 def one_file(file_list, file_path, aa, n, idx=None,raa=None):
     """ write feature vector to a file
     :param file_list: train file list, list
@@ -94,12 +114,11 @@ def one_file(file_list, file_path, aa, n, idx=None,raa=None):
             simple_seq = reduce(seq, aa, raa)
             if not raa:
                 raa = [i[0] for i in aa]
-            base_aac = feature.aac(simple_seq, raa, n)
+            base_aac = seq_aac(simple_seq, raa, n)
             for a in base_aac:
                 line0 = [v for v in a[1]]
                 line1 = [idx] + line0
                 h.writerow(line1)
-                # new_handle.write('\n')
             f.close()
 
 def thread_func(file_list, folder_n, n, clusters):
@@ -114,7 +133,6 @@ def thread_func(file_list, folder_n, n, clusters):
                 os.mkdir(type_path)
             except FileExistsError:
                 pass
-            # file_list, file_path, aa, n, idx=None,raa=None
             file_path = os.path.join(folder_n, f"type{tpi}", f"{size}_{n}n.csv")
             future = tpe.submit(one_file, file_list, file_path, aa, n, idx=size)
             to_do_map[future] = tpi, size, cluster
@@ -134,8 +152,14 @@ def reduce_seq(file_list, folder, n, cluster_info, p):
     max_work = min(p, os.cpu_count(), counts)
     max_work = max(1, max_work)
     per = int(counts / max_work)
+    tmp = []
     with futures.ProcessPoolExecutor(max_work) as ppe:
         for idx, item in enumerate(cluster_info, 1):
+            tpi, size, _, _ = item
+            if tmp == [tpi, size]:
+                continue
+            else:
+                tmp = [tpi, size]
             if idx % per == 0:
                 clusters = cluster_per.copy()
                 future = ppe.submit(thread_func, file_list, folder_n, n, clusters)
@@ -145,7 +169,6 @@ def reduce_seq(file_list, folder, n, cluster_info, p):
         else:
             future = ppe.submit(thread_func, file_list, folder_n, n, cluster_per)
             to_do_map[future] = [idx-per, idx]
-            # cluster_per.clear()
         naa_path = os.path.join(folder_n, f'20_{n}n.csv')
         future = ppe.submit(one_file, file_list, naa_path, NAA, n)
         to_do_map[future] = "20s"
@@ -196,6 +219,86 @@ def dic2array(result_dic, key='acc', filter_num=0, cls=0):
     filtered_score = (filtered_score_array, filtered_type_ls)
     return all_score, filtered_score
 
+def eval_plot(result_dic, n, out, fmt='tiff', filter_num = 8):
+    key = 'acc'
+    all_score, filter_score = dic2array(result_dic, key=key, filter_num=filter_num)
+    scores, types = all_score
+    f_scores, f_types = filter_score
+    f_heatmap_path = os.path.join(out, f'{key}_f{filter_num}-heatmap_{n}n.{fmt}')
+    heatmap_path = os.path.join(out, f'{key}_heatmap_{n}n.{fmt}')
+    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path)
+    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path)
+
+    f_scores_arr = f_scores[f_scores > 0]
+    size_arr = np.array([np.arange(2, 21)] * f_scores.shape[0])[f_scores > 0]
+    path = os.path.join(out, f'acc_size_density-{n}n.{fmt}')
+    size_arr = size_arr.flatten()
+    draw.p_bivariate_density(size_arr, f_scores_arr, n, path)
+
+    max_type_idx_arr, max_size_idx_arr = np.where(f_scores == f_scores.max())
+    m_type_idx, m_size_idx = max_type_idx_arr[0], max_size_idx_arr[0]  # 默认第一个
+
+    cp_path = os.path.join(out, f'comparsion_{n}n.{fmt}')
+    diff_size = f_scores[m_type_idx]
+    same_size = f_scores[:, m_size_idx]
+    types_label = [int(i[4:]) for i in f_types]
+    draw.p_comparison_type(diff_size, same_size, types_label, cp_path)
+
+    fea_folder = f'{out}_{n}n'
+    type_id = f_types[m_type_idx]
+    file_name = f"{m_size_idx+2}_{n}n.csv"
+    max_acc_fea_file = os.path.join(fea_folder, type_id, file_name)
+    # com_result = cp.al_comparison(max_acc_fea_file)
+    # roc_path = os.path.join(out, f'{n}n_al_roc.{fmt}')
+    # draw.p_roc_al(param, roc_path)
+    return f_scores_arr, max_acc_fea_file
+
+def load_normal_data(file_data): ## file for data (x,y)
+    if os.path.isfile(str(file_data)):
+        data = np.genfromtxt(file_data, delimiter=',')
+        x, y = data[:, 1:], data[:, 0]
+    else:
+        x, y = file_data
+    scaler = Normalizer()
+    x = scaler.fit_transform(x)
+    return x, y
+
+def data_to_hpo(file, hpo=1):
+    hpo_x, hpo_y = load_normal_data(file)
+    if hpo < 1:
+        train_x, _, train_y, _ = train_test_split(
+            hpo_x, hpo_y, shuffle=True, random_state=1, test_size=1-hpo)
+    return hpo_x, hpo_y
+
+TEXT = """
+    敏感度(Sensitivity, SN)也称召回率(Recall, RE):	
+            Sn = Recall = TP / (TP + FN)
+    特异性(Specificity, SP):
+            Sp = TN / (TN + FP)
+    精确率(Precision, PR)也称阳极预测值(Positive Predictive Value, PPV):	
+            Precision= PPV = TP / (TP + FP)
+    预测成功率(Accuracy, Acc):
+            Acc = (TP + TN) / (TP + FP + TN + FN)
+    Matthew 相关系数(Matthew's correlation coefficient, Mcc):
+        MCC = (TP*TN- FP*FN)/sqrt((TP + FP)*(TN + FN)*(TP + FN)*(TN + FP)).其中sqrt代表开平方.
+"""
+              
+def print_report(metrics, cm, report_file):
+    accl, snl, spl, ppvl, mccl = metrics
+    with open(report_file, "w") as f:
+        tp, fn, fp, tn, sn, sp, acc, mcc, ppv = "tp", "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv"
+        line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
+        f.write(line0)
+        for idx, line in enumerate(cm):
+            (tn, fp), (fn, tp) = line
+            acc, sn, sp, ppv, mcc = accl[idx]*100, snl[idx]*100, spl[idx]*100, ppvl[idx]*100, mccl[idx]*100
+            linei = f"{idx:<3}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
+            f.write(linei)
+        f.write("\n\n")
+        f.write(TEXT)
+            
+            
+    
 
 if __name__ == '__main__':
     pass
