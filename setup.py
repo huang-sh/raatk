@@ -17,7 +17,7 @@ setup(name='raa-assess',
         ],
     entry_points={
         'console_scripts': [
-        'raa = raa-assess.__main__:command_parser',
+        'raa=raa-assess.__main__:command_parser',
             ]
         },
     python_requires=">=3.5",
