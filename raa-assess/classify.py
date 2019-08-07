@@ -143,12 +143,10 @@ class KnnClassifier:
         self.n_neighbors = n_neighbors
         self.cv = cv
 
-
     def train(self, x_train, y_train):
         clf = KNeighborsClassifier(self.n_neighbors, weights='distance', n_jobs=-1)
         clf = clf.fit(x_train, y_train)
         return clf
-
 
 class RfClassifier:
 

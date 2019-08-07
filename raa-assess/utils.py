@@ -298,7 +298,5 @@ def print_report(metrics, cm, report_file):
         f.write(TEXT)
             
             
-    
-
 if __name__ == '__main__':
     pass

@@ -39,7 +39,7 @@ def all_eval(folder_name, result_path, n, cv, hpo, cpu):
     to_do_map = {}
     result_dic = {}
     max_work = min(cpu, os.cpu_count())
-    with futures.ProcessPoolExecutor(max_work) as pp:
+    with futures.ProcessPoolExecutor(int(max_work)) as pp:
         evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
         for type_dir, file_ls in ul.parse_path(folder_n, filter_format='csv'):
             for file in file_ls:
@@ -56,7 +56,7 @@ def all_eval(folder_name, result_path, n, cv, hpo, cpu):
         for it in done_iter:
             info = to_do_map[it]
             metric = it.result()
-            acc, sn, sp, ppv, mcc = metric[:-1]
+            acc, sn, sp, ppv, mcc = metric[0]
             one_dic = {'sn': sn.tolist(), 'sp': sp.tolist(), 'ppv': ppv.tolist(),
                       'acc': acc.tolist(), 'mcc': mcc.tolist()}
             if info[-1] == '20s':
@@ -111,7 +111,7 @@ def feature_select(feature_file, cv=-1, hpo=1):
         acc_ls = []
         for it in done_iter:
             idx, score = to_do_map[it]
-            acc, *_ = it.result()[:-1]
+            acc, *_ = it.result()[0]
             acc_ls.append(acc[0])
         acc_ls.sort()
     return acc_ls

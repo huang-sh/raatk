@@ -14,7 +14,7 @@ import numpy as np
 
 import draw
 import utils as ul
-import computation as cp
+import compute as cp
 
 
 def sub_view(args):

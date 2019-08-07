@@ -67,7 +67,7 @@ def p_comparison_type(diff_size, same_size, types_label, out):
     ax1.set_xticks(range(1, len(sizes_acc)+1))
     ax1.set_xticklabels(sizes_label, fontdict={'Size': 12})
     ax1.set_ylabel('Acc', fontdict={'Size': 15})
-    ax1.text(m_size_idx, max_acc+0.1, f'{max_acc:.3f}', 
+    ax1.text(m_size_idx, max_acc+0.01, f'{max_acc:.3f}', 
              ha='center', va='bottom', fontsize=10, fontweight='bold')
 
     types_acc = same_size[same_size > 0]
@@ -78,7 +78,7 @@ def p_comparison_type(diff_size, same_size, types_label, out):
     ax2.set_xlabel('Type')
     ax2.set_xticks(range(1, len(types_acc)+1))
     ax2.set_xticklabels(types_label, fontsize=8, rotation=-35)  #
-    ax2.text(m_size_idx, max_acc+0.1, f'{max_acc:.3f}',
+    ax2.text(m_size_idx, max_acc+0.01, f'{max_acc:.3f}',
              ha='center', va='bottom', fontsize=10, fontweight='bold')
     plt.tight_layout()
     plt.savefig(out, bbox_inches="tight")
