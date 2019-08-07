@@ -128,11 +128,8 @@ def thread_func(file_list, folder_n, n, clusters):
             tpi, size, cluster, _ = item
             aa = cluster.split('-')
             aa = [i for i in aa if i]
-            try:
-                type_path = os.path.join(folder_n, f"type{tpi}")
-                os.mkdir(type_path)
-            except FileExistsError:
-                pass
+            type_dir = os.path.join(folder_n, f"type{tpi}")
+            mkdirs(type_dir)
             file_path = os.path.join(folder_n, f"type{tpi}", f"{size}_{n}n.csv")
             future = tpe.submit(one_file, file_list, file_path, aa, n, idx=size)
             to_do_map[future] = tpi, size, cluster
@@ -140,12 +137,8 @@ def thread_func(file_list, folder_n, n, clusters):
         for i in done_iter:
             print(i)
 
-def reduce_seq(file_list, folder, n, cluster_info, p):
-    try:
-        folder_n = folder
-        os.mkdir(folder_n)
-    except FileExistsError:
-        pass
+def reduce_seq(file_list, folder_n, n, cluster_info, p):
+    mkdirs(folder_n)
     to_do_map = {}
     cluster_per = []
     counts = len(cluster_info)
@@ -189,6 +182,11 @@ def parse_path(feature_folder, filter_format='csv'):
             continue
         yield root, [i for i in file if i.endswith(filter_format)]
 
+def mkdirs(directory):
+    try:
+        os.makedirs(directory)
+    except FileExistsError:
+        pass
 
 def dic2array(result_dic, key='acc', filter_num=0, cls=0):
     acc_ls = []  # all type acc

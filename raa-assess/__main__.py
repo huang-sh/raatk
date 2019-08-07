@@ -22,7 +22,6 @@ def sub_view(args):
     size = ','.join(map(str, args.size))
     values = ul.query(type_id, size)
     for item in values:
-        # print(*item)
         tpi, size, cluster, method = item
         info = f"type{tpi:<3}{size:<3}{cluster:<40}{method}"
         print(info)
@@ -38,15 +37,11 @@ def sub_reduce(args):
     type_id = ','.join(map(str, tpi))
     size = ','.join(map(str, size))
     cluster_info = ul.reduce_query(type_id, size)
-    print(len(cluster_info))
     for n in args.k:
         ul.reduce_seq(args.f, f'{args.o}_{n}n', n, cluster_info, args.p)
 
 def sub_eval(args):
-    try:
-        os.mkdir(args.input)
-    except FileExistsError:
-        pass
+    ul.mkdirs(args.input)
     for n in args.k:
         folder_name = f'{args.input}_{n}n'
         json_path = os.path.join(args.input, f'{n}n_result.json')
@@ -57,10 +52,7 @@ def sub_eval(args):
             ul.eval_plot(re_dic, n, args.input, fmt=args.fmt)
 
 def sub_plot(args):
-    try:
-        os.mkdir(args.o)
-    except FileExistsError:
-        pass
+    ul.mkdirs(args.o)
     for re_file in args.f:
         with open(re_file, 'r') as f:
             re_dic = json.load(f)
@@ -68,10 +60,7 @@ def sub_plot(args):
         ul.eval_plot(re_dic, int(n), args.o, fmt=args.fmt)
 
 def sub_fs(args):
-    try:
-        os.mkdir(args.o)
-    except FileExistsError:
-        pass
+    ul.mkdirs(args.o)
     if args.mix:
         acc_ls = cp.feature_mix(args.f, cv=args.cv, hpo=args.hpo)
         filename = f'mix_feature.{args.fmt}'
@@ -85,10 +74,7 @@ def sub_fs(args):
             draw.p_fs(acc_ls, out=fig_path)
 
 def sub_own(args):
-    try:
-        os.mkdir(args.o)
-    except FileExistsError:
-        pass
+    ul.mkdirs(args.o)
     for n in args.k:
         cluster = args.cluster.split("-")
         feature_file_path = os.path.join(args.o, f"{len(cluster)}_{n}n.csv")
