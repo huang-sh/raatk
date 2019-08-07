@@ -121,8 +121,8 @@ def command_parser():
     subparsers = parser.add_subparsers(help='sub-command help')
 
     parser_v = subparsers.add_parser('view', help='view the reduce amino acids scheme')
-    parser_v.add_argument('--type', nargs='+', type=int, choices=list([i for i in range(1, 74)]),help='type id')
-    parser_v.add_argument('--size', nargs='+', type=int, choices=list([i for i in range(2, 20)]), help='reduce size')
+    parser_v.add_argument('-t', '--type', nargs='+', type=int, choices=list([i for i in range(1, 74)]),help='type id')
+    parser_v.add_argument('-s', '--size', nargs='+', type=int, choices=list([i for i in range(2, 20)]), help='reduce size')
     parser_v.set_defaults(func=sub_view)
 
     parser_a = subparsers.add_parser('reduce', help='reduce sequence and extract feature')
