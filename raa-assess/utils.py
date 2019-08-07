@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
 
-import draw
+from . import draw
 
 BASE_PATH = os.path.dirname(__file__)
 RAA_DB = os.path.join(BASE_PATH, 'raa_data.db')

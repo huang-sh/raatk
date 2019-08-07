@@ -6,8 +6,8 @@ from concurrent import futures
 import numpy as np
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
-import classify as al
-import utils as ul
+from . import classify as al
+from . import utils as ul
 
 
 def model_hpo(x, y):
