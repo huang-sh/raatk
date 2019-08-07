@@ -178,7 +178,9 @@ def dic2array(result_dic, key='acc', filter_num=0, cls=0):
 
     filtered_type_ls = type_ls.copy()
     filtered_score_ls = []
-
+    sum_raa = sum([len(result_dic[ti].keys()) for ti in type_ls])
+    if sum_raa < 600:
+        filter_num = 0
     for idx, ti in enumerate(type_ls):
         type_ = result_dic[ti]
         score_size_ls = []
