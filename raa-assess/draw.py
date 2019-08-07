@@ -5,17 +5,13 @@ import time
 import math
 
 import numpy as np
-import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.interpolate import griddata
-from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import Normalize, BoundaryNorm
+from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import colorbar
-from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, recall_score
-from sklearn.metrics import recall_score, precision_score, matthews_corrcoef
+from sklearn.metrics import roc_curve, roc_auc_score
 
 
 def p_roc(y_test, y_pro, out):
