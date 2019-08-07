@@ -32,10 +32,8 @@ def process_eval_func(file, cv=-1, hpo=1): #
     eval_x, eval_y = ul.load_normal_data(file)
     metrics = evaluate(clf, eval_x, eval_y, cv=-1)
     return metrics
-    
 
-def all_eval(folder_name, result_path, n, cv, hpo, cpu):
-    folder_n = folder_name
+def all_eval(folder_n, result_path, n, cv, hpo, cpu):
     to_do_map = {}
     result_dic = {}
     max_work = min(cpu, os.cpu_count())
@@ -45,7 +43,7 @@ def all_eval(folder_name, result_path, n, cv, hpo, cpu):
             for file in file_ls:
                 file_path = os.path.join(type_dir, file)
                 future = pp.submit(evla_func, file_path)
-                type_num = os.path.basename(os.path.dirname(file_path))
+                type_num = os.path.basename(type_dir)
                 to_do_map[future] = [type_num, f"{file.split('_')[0]}"]
         else:
             naa_path = os.path.join(folder_n, f'20_{n}n.csv')
@@ -71,10 +69,8 @@ def all_eval(folder_name, result_path, n, cv, hpo, cpu):
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f)
 
-
 def al_comparison(file_path,):
     """
-
     :param file_path: feature file path
     :return:
     """
@@ -85,7 +81,6 @@ def al_comparison(file_path,):
         metrics, auc = evaluate(model, file_path)
         result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
     return result_dic
-
 
 def feature_select(feature_file, cv=-1, hpo=1):
     X, y = ul.load_normal_data(feature_file)
@@ -128,5 +123,3 @@ def own_func(file_ls, feature_file, cluster, n):
     ul.one_file(file_ls, feature_file, cluster, n, idx=len(cluster))
     metrics, cm = process_eval_func(feature_file, cv=-1, hpo=1)
     return metrics, cm
-    
-    

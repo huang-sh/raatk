@@ -78,9 +78,9 @@ def sub_own(args):
     for n in args.k:
         cluster = args.cluster.split("-")
         feature_file_path = os.path.join(args.o, f"{len(cluster)}_{n}n.csv")
-        metrics, cm = cp.own_func(args.f, feature_file_path, cluster, n)
+        metric, cm = cp.own_func(args.f, feature_file_path, cluster, n)
         report_file = os.path.join(args.o, f"{n}n_report.txt")
-        ul.print_report(metrics, cm, report_file)
+        ul.print_report(metric, cm, report_file)
     
 # def workflow(args):
 #     file_dic = {}

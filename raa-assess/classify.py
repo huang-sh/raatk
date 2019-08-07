@@ -29,7 +29,6 @@ class Evaluate:
         X, y = self.x, self.y        
         ss = lo.split(X)
         y_pre_arr = np.zeros(len(y))
-        y_pro_arr = np.zeros(len(y))
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
@@ -39,6 +38,7 @@ class Evaluate:
         metric = self.metrics_(y, y_pre_arr)
         cm = multilabel_confusion_matrix(y, y_pre_arr)
         return metric, cm
+    
     def kfold(self, k):
         skf = StratifiedKFold(n_splits=k, random_state=1)
         ss = skf.split(self.x, self.y)

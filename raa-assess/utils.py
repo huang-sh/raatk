@@ -29,7 +29,6 @@ def reduce_query(type_id, size):
     conn.close()
     return raa_clusters
 
-
 def read_fasta(seq):
     lines = []
     for line in seq:
@@ -170,24 +169,6 @@ def reduce_seq(file_list, folder_n, n, cluster_info, p):
             idx = to_do_map[f]
             print(f'{n}n --> {idx}', 'has done!')
 
-def parse_path(feature_folder, filter_format='csv'):
-    """
-
-    :param feature_folder: all type feature folder path
-    :return:
-    """
-    path = os.walk(feature_folder)
-    for root, dirs, file in path:
-        if root == feature_folder:
-            continue
-        yield root, [i for i in file if i.endswith(filter_format)]
-
-def mkdirs(directory):
-    try:
-        os.makedirs(directory)
-    except FileExistsError:
-        pass
-
 def dic2array(result_dic, key='acc', filter_num=0, cls=0):
     acc_ls = []  # all type acc
     filtered_type_acc = []
@@ -251,6 +232,23 @@ def eval_plot(result_dic, n, out, fmt='tiff', filter_num = 8):
     # draw.p_roc_al(param, roc_path)
     return f_scores_arr, max_acc_fea_file
 
+def parse_path(feature_folder, filter_format='csv'):
+    """
+    :param feature_folder: all type feature folder path
+    :return:
+    """
+    path = os.walk(feature_folder)
+    for root, dirs, file in path:
+        if root == feature_folder:
+            continue
+        yield root, [i for i in file if i.endswith(filter_format)]
+
+def mkdirs(directory):
+    try:
+        os.makedirs(directory)
+    except FileExistsError:
+        pass
+
 def load_normal_data(file_data): ## file for data (x,y)
     if os.path.isfile(str(file_data)):
         data = np.genfromtxt(file_data, delimiter=',')
@@ -281,8 +279,8 @@ TEXT = """
         MCC = (TP*TN- FP*FN)/sqrt((TP + FP)*(TN + FN)*(TP + FN)*(TN + FP)).其中sqrt代表开平方.
 """
               
-def print_report(metrics, cm, report_file):
-    accl, snl, spl, ppvl, mccl = metrics
+def print_report(metric, cm, report_file):
+    accl, snl, spl, ppvl, mccl = metric
     with open(report_file, "w") as f:
         tp, fn, fp, tn, sn, sp, acc, mcc, ppv = "tp", "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv"
         line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
@@ -294,7 +292,3 @@ def print_report(metrics, cm, report_file):
             f.write(linei)
         f.write("\n\n")
         f.write(TEXT)
-            
-            
-if __name__ == '__main__':
-    pass
