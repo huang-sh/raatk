@@ -20,7 +20,7 @@ from . import compute as cp
 def sub_view(args):
     type_id = ','.join(map(str, args.type))
     size = ','.join(map(str, args.size))
-    values = ul.query(type_id, size)
+    values = ul.reduce_query(type_id, size)
     for item in values:
         tpi, size, cluster, method = item
         info = f"type{tpi:<3}{size:<3}{cluster:<40}{method}"
