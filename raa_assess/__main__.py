@@ -62,7 +62,7 @@ def sub_plot(args):
 def sub_fs(args):
     ul.mkdirs(args.o)
     if args.mix:
-        acc_ls = cp.feature_mix(args.f, cv=args.cv, hpo=args.hpo)
+        acc_ls = cp.feature_mix(args.f, args.p, cv=args.cv, hpo=args.hpo)
         filename = f'mix_feature.{args.fmt}'
         fig_path = os.path.join(args.o, filename)
         draw.p_fs(acc_ls, out=fig_path)
@@ -158,6 +158,8 @@ def command_parser():
     parser_e.add_argument('-cv', type=float, help='cross validation fold')
     parser_e.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
     parser_e.add_argument('-fmt', default="png", help='the format of figures')
+    parser_e.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=os.cpu_count()/2, help='output folder name')
     parser_e.add_argument('-mix', action='store_true', help='feature mix')
     parser_e.set_defaults(func=sub_fs)
     

@@ -82,7 +82,7 @@ def al_comparison(file_path,):
         result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
     return result_dic
 
-def feature_select(feature_file, cv=-1, hpo=1):
+def feature_select(feature_file, cpu, cv=-1, hpo=1):
     X, y = ul.load_normal_data(feature_file)
     selector = VarianceThreshold()
     new_x = selector.fit_transform(X)
@@ -93,7 +93,7 @@ def feature_select(feature_file, cv=-1, hpo=1):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    with futures.ProcessPoolExecutor() as pp:
+    with futures.ProcessPoolExecutor(cpu) as pp:
         to_do_map = {}
         evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
         for i, idx in enumerate(feature_idx):
