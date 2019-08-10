@@ -68,7 +68,7 @@ def sub_fs(args):
         draw.p_fs(acc_ls, out=fig_path)
     else:
         for file in args.f: 
-            acc_ls = cp.feature_select(file, cv=args.cv, hpo=args.hpo)
+            acc_ls = cp.feature_select(file, args.p, cv=args.cv, hpo=args.hpo)
             filename = file.split('.')[0].split(os.sep)[-1] + f'.{args.fmt}'
             fig_path = os.path.join(args.o, filename)
             draw.p_fs(acc_ls, out=fig_path)
@@ -181,5 +181,4 @@ def command_parser():
 
 if __name__ == '__main__':
     command_parser()
-
 
