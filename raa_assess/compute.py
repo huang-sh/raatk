@@ -3,11 +3,19 @@ import json
 from functools import partial
 from concurrent import futures
 
+
 import numpy as np
+from joblib import Parallel, delayed
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
-from . import classify as al
-from . import utils as ul
+try:
+    from . import classify as al
+    from . import utils as ul
+    from . import compute as cp
+except ImportError:
+    import classify as al
+    import utils as ul
+    import compute as cp  
 
 
 def model_hpo(x, y):
@@ -69,18 +77,18 @@ def all_eval(folder_n, result_path, n, cv, hpo, cpu):
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f)
 
-def al_comparison(file_path,):
-    """
-    :param file_path: feature file path
-    :return:
-    """
-    classifier = {'SVM': al.SvmClassifier, 'RF': al.RfClassifier, 'KNN': al.KnnClassifier}
-    result_dic = {}
-    for clf in classifier:
-        model = drill(classifier[clf], file_path)
-        metrics, auc = evaluate(model, file_path)
-        result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
-    return result_dic
+# def al_comparison(file_path,):
+#     """
+#     :param file_path: feature file path
+#     :return:
+#     """
+#     classifier = {'SVM': al.SvmClassifier, 'RF': al.RfClassifier, 'KNN': al.KnnClassifier}
+#     result_dic = {}
+#     for clf in classifier:
+#         model = drill(classifier[clf], file_path)
+#         metrics, auc = evaluate(model, file_path)
+#         result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
+#     return result_dic
 
 def feature_select(feature_file, cpu, cv=-1, hpo=1):
     X, y = ul.load_normal_data(feature_file)
@@ -93,23 +101,16 @@ def feature_select(feature_file, cpu, cv=-1, hpo=1):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    with futures.ProcessPoolExecutor(cpu) as pp:
-        to_do_map = {}
-        evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
-        for i, idx in enumerate(feature_idx):
-            index = feature_idx[:i+1]
-            x = X[:, index]
-            print(x.shape)
-            future = pp.submit(evla_func, (x, y))
-            to_do_map[future] = [i+1, rank_score[i]]
-        done_iter = futures.as_completed(to_do_map)
-        acc_ls = []
-        for it in done_iter:
-            idx, score = to_do_map[it]
-            acc, *_ = it.result()[0]
-            acc_ls.append(acc[0])
-        acc_ls.sort()
-    return acc_ls
+    evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
+    results = Parallel(n_jobs=cpu)(
+        delayed(evla_func)((X[:, feature_idx[:i+1]], y)) for i, idx in enumerate(feature_idx))
+    acc_ls = []
+    for i, it in enumerate(results, 1):
+        acc, *_ = it[0]
+        print(f"{i:<2} ----> {acc[0]}")
+        acc_ls.append([acc[0], i])
+    acc_ls.sort(key=lambda x: x[1])
+    return [i[0] for i in acc_ls]
 
 def feature_mix(files, cv=-1, hpo=1):
     data_ls = [np.genfromtxt(file, delimiter=',')[1:] for file in files]

@@ -12,9 +12,14 @@ import sqlite3
 
 import numpy as np
 
-from . import draw
-from . import utils as ul
-from . import compute as cp
+try:
+    from . import draw
+    from . import utils as ul
+    from . import compute as cp
+except ImportError:
+    import draw
+    import utils as ul
+    import compute as cp  
 
 
 def sub_view(args):
