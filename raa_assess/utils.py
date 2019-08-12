@@ -268,8 +268,8 @@ def load_normal_data(file_data): ## file for data (x,y)
 def data_to_hpo(file, hpo=1):
     hpo_x, hpo_y = load_normal_data(file)
     if hpo < 1:
-        train_x, _, train_y, _ = train_test_split(
-            hpo_x, hpo_y, shuffle=True, random_state=1, test_size=1-hpo)
+        hpo_x, _, hpo_y, _ = train_test_split(
+        hpo_x, hpo_y, test_size=1-hpo, random_state=1, shuffle=True)
     return hpo_x, hpo_y
 
 TEXT = """

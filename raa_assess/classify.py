@@ -112,7 +112,7 @@ class SvmClassifier:
             ('classify', self.clf)
         ])
         grid = GridSearchCV(pipe, cv=5, n_jobs=-1, param_grid=self.param_grid, iid=True)
-        x_train, _, y_train, _ = train_test_split(x_train, y_train, test_size=0.4, random_state=1, shuffle=True)
+        # x_train, _, y_train, _ = train_test_split(x_train, y_train, test_size=0.4, random_state=1, shuffle=True)
         clf = grid.fit(x_train, y_train)
         C, gamma = clf.best_params_['classify__C'], clf.best_params_['classify__gamma'],
         self.best_score = clf.best_score_
