@@ -35,7 +35,7 @@ def evaluate(clf, x, y, cv=-1, **kwargs):
     return metrics
 
 def process_eval_func(file, cv=-1, hpo=1): # 
-    hpo_x, hpo_y = ul.data_to_hpo(file, hpo=1)
+    hpo_x, hpo_y = ul.data_to_hpo(file, hpo=hpo)
     clf = model_hpo(hpo_x, hpo_y)
     eval_x, eval_y = ul.load_normal_data(file)
     metrics = evaluate(clf, eval_x, eval_y, cv=-1)
