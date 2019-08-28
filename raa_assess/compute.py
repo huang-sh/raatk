@@ -75,7 +75,7 @@ def all_eval(folder_n, result_path, n, cv, hpo, cpu):
             print(t)
             result_dic[t]['20'] = naa_dic
     with open(result_path, 'w', encoding='utf-8') as f:
-        json.dump(result_dic, f)
+        json.dump(result_dic, f, indent=4)
 
 # def al_comparison(file_path,):
 #     """

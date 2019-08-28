@@ -46,15 +46,15 @@ def sub_reduce(args):
         ul.reduce_seq(args.f, f'{args.o}_{n}n', n, cluster_info, args.p)
 
 def sub_eval(args):
-    ul.mkdirs(args.input)
+    ul.mkdirs(args.o)
     for n in args.k:
-        folder_name = f'{args.input}_{n}n'
-        json_path = os.path.join(args.input, f'{n}n_result.json')
+        folder_name = f'{args.o}_{n}n'
+        json_path = os.path.join(args.o, f'{n}n_result.json')
         cp.all_eval(folder_name, json_path, n, args.cv, args.hpo, args.p)
         if args.v:
             with open(json_path, 'r') as f:
                 re_dic = json.load(f)
-            ul.eval_plot(re_dic, n, args.input, fmt=args.fmt)
+            ul.eval_plot(re_dic, n, args.o, fmt=args.fmt)
 
 def sub_plot(args):
     ul.mkdirs(args.o)
@@ -87,41 +87,31 @@ def sub_own(args):
         report_file = os.path.join(args.o, f"{n}n_report.txt")
         ul.print_report(metric, cm, report_file)
     
-# def workflow(args):
-#     file_dic = {}
-#     fs_file = []
-#     diff_n_acc = []
-#     for n in args.k:
-#         folder = f'{folder}_{n}n'
-#         json_path = os.path.join(args.o, f'{n}n_result.json')
-#         file_dic[n] = json_path
-#         if args.r:
-#             ul.all_type(args.f, folder, n)
-#         if args.te:
-#             cp.all_drill(folder_name)
-#             cp.all_eval(folder_name, json_path, args.cv)
-#         if os.path.exists(json_path):
-#             with open(json_path, 'r') as f:
-#                 result_dic = json.load(f)
-#             f_scores_arr, max_acc_fea_file = plot_n_eval(result_dic, n, args.o, args.o)
-#             fs_file.append(max_acc_fea_file)
-#             diff_n_acc.append(fs_file)
-#     density_path = os.path.join(args.o, f'acc_density_{n}.pdf')
-#     draw.p_univariate_density(diff_n_acc, [f'{i}n' for i in args.k], density_path)
-#     for idx, file in enumerate(fs_file):
-#         acc_ls = cp.feature_select(file)
-#         fig_path = os.path.join(args.o, file.split('.')[0])
-#         draw.p_fs(acc_ls, out=fig_path)
+    
+def workflow(args):
+    if args.r:
+        sub_reduce(args)
+    if args.c:
+        sub_eval(args)
+        
 
 def command_parser():
     parser = argparse.ArgumentParser(description='reduce sequence and classify')
-    parser.add_argument('-r', '--reduce', action='store_true',
+    
+    parser.add_argument('-f', nargs='+', help='amino acid fasta files, >= 2')
+    parser.add_argument('-r', action='store_true',
                                     help='reduce sequence based on reduce type')
-    parser.add_argument('-f', '--file', nargs='+', help='input file')
+    parser.add_argument('-t', nargs='+', help='type id')
+    parser.add_argument('-s', nargs='+', help='reduce size')
     parser.add_argument('-k', nargs='+', type=int, choices=[1,2,3])
-    parser.add_argument('-o', '--output', help='output folder name')
-    parser.add_argument('-c', '--compute', action='store_true', help='compute')
-    parser.add_argument('-p', '--plot', action='store_true', help='plot')
+    parser.add_argument('-c', action='store_true', help='compute')
+    parser.add_argument('-cv', type=float, help='cross validation fold')
+    parser.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
+    parser.add_argument('-o', help='output folder name')
+    parser.add_argument('-v', action='store_true', help='plot')
+    parser.add_argument('-fmt', default="png", help='the format of figures')
+    parser.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=os.cpu_count()/2, help='output folder name')
 
     subparsers = parser.add_subparsers(help='sub-command help')
 
@@ -135,13 +125,13 @@ def command_parser():
     parser_a.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
     parser_a.add_argument('-t', nargs='+', help='type id')
     parser_a.add_argument('-s', nargs='+', help='reduce size')
-    parser_a.add_argument('-o', help='output folder name')
+    parser_a.add_argument('-o', help='output folder basename')
     parser_a.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
                                  default=os.cpu_count()/2, help='output folder name')
     parser_a.set_defaults(func=sub_reduce)
 
     parser_c = subparsers.add_parser('eval', help='evaluate models')
-    parser_c.add_argument('-input', help='feature folder')
+    parser_c.add_argument('-o', help='the value of reduce command -o')
     parser_c.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
     parser_c.add_argument('-cv', type=float, help='cross validation fold')
     parser_c.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
@@ -182,7 +172,7 @@ def command_parser():
     try:
         args.func(args)
     except AttributeError:
-        pass
+        workflow(args)
 
 if __name__ == '__main__':
     command_parser()
