@@ -81,7 +81,7 @@ class Evaluate:
         sp = tn / (tn + fp) # specificity
         ppv = tp / (tp + fp) # presision
         acc = (tp + tn) / (tp + tn + fp + fn)
-        mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn*fp)*(tn+fn))
+        mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
         return acc, sn, sp, ppv, mcc
         
 
