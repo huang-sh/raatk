@@ -264,11 +264,11 @@ def load_normal_data(file_data): ## file for data (x,y)
     x = scaler.fit_transform(x)
     return x, y
 
-def data_to_hpo(file, hpo=1):
+def data_to_hpo(file, hpod=.6):
     hpo_x, hpo_y = load_normal_data(file)
-    if hpo < 1:
+    if hpod < 1:
         hpo_x, _, hpo_y, _ = train_test_split(
-        hpo_x, hpo_y, train_size=hpo, random_state=1, shuffle=True)
+        hpo_x, hpo_y, train_size=hpod, random_state=1, shuffle=True)
     return hpo_x, hpo_y
 
 TEXT = """

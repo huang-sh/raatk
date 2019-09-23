@@ -143,7 +143,7 @@ def command_parser():
     parser_c.add_argument('-v', action='store_true', help='visual')
     parser_c.add_argument('-fmt', default="png", help='the format of figures')
     parser_c.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=os.cpu_count()/2, help='output folder name')
+                                 default=int(os.cpu_count()/2), help='output folder name')
     parser_c.set_defaults(func=sub_eval)
     
     parser_d = subparsers.add_parser("plot", help='analyze and plot evaluate result')
