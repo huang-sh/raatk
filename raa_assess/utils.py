@@ -148,7 +148,7 @@ def reduce_seq(file_list, n_fea_dir, n, cluster_info, p):
     max_work = max(1, max_work)
     per = int(counts / max_work)
     tmp = []
-    with futures.ProcessPoolExecutor(max_work) as ppe:
+    with futures.ProcessPoolExecutor(int(max_work)) as ppe:
         for idx, item in enumerate(cluster_info, 1):
             tpi, size, _, _ = item
             if tmp == [tpi, size]:
