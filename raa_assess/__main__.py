@@ -49,9 +49,9 @@ def sub_reduce(args):
         ul.reduce_seq(args.f, n_fea_dir, n, cluster_info, args.p)
 
 def sub_eval(args):
-    ul.mkdirs(args.o)
     for n in args.k:
         n_fea_dir = os.path.join(args.o, f'{args.o}_{n}n')
+        ul.mkdirs(n_fea_dir)
         json_path = os.path.join(args.o, f'{n}n_result.json')
         cp.all_eval(n_fea_dir, json_path, n, args.cv, args.hpod, args.p)
         if args.v:
@@ -86,7 +86,7 @@ def sub_own(args):
     for n in args.k:
         cluster = args.cluster.split("-")
         feature_file_path = os.path.join(args.o, f"{len(cluster)}_{n}n.csv")
-        metric, cm = cp.own_func(args.f, feature_file_path, cluster, n)
+        metric, cm = cp.own_func(args.f, feature_file_path, cluster, n, args.hpod)
         report_file = os.path.join(args.o, f"{n}n_report.txt")
         ul.print_report(metric, cm, report_file)
     

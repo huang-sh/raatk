@@ -36,19 +36,19 @@ def evaluate(clf, x, y, cv=-1, **kwargs):
         metrics = evalor.holdout(k)
     return metrics
 
-def process_eval_func(file, cv=-1, hpo=1): # 
-    hpo_x, hpo_y = ul.data_to_hpo(file, hpo=hpo)
+def process_eval_func(file, cv=-1, hpod=.6): # 
+    hpo_x, hpo_y = ul.data_to_hpo(file, hpod=hpod)
     clf = model_hpo(hpo_x, hpo_y)
     eval_x, eval_y = ul.load_normal_data(file)
     metrics = evaluate(clf, eval_x, eval_y, cv=-1)
     return metrics
 
-def all_eval(n_fea_dir, result_path, n, cv, hpo, cpu):
+def all_eval(n_fea_dir, result_path, n, cv, hpod, cpu):
     to_do_map = {}
     result_dic = {}
     max_work = min(cpu, os.cpu_count())
     with futures.ProcessPoolExecutor(int(max_work)) as pp:
-        evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
+        evla_func = partial(process_eval_func, cv=cv, hpod=hpod)
         for type_dir, file_ls in ul.parse_path(n_fea_dir, filter_format='csv'):
             for file in file_ls:
                 file_path = os.path.join(type_dir, file)
@@ -63,8 +63,8 @@ def all_eval(n_fea_dir, result_path, n, cv, hpo, cpu):
         done_iter = futures.as_completed(to_do_map)
         for it in done_iter:
             info = to_do_map[it]
-            metric = it.result()
-            acc, sn, sp, ppv, mcc = metric[0]
+            metric, _ = it.result()
+            acc, sn, sp, ppv, mcc = metric
             one_dic = {'sn': sn.tolist(), 'sp': sp.tolist(), 'ppv': ppv.tolist(),
                       'acc': acc.tolist(), 'mcc': mcc.tolist()}
             if info[-1] == '20s':
@@ -80,7 +80,7 @@ def all_eval(n_fea_dir, result_path, n, cv, hpo, cpu):
         json.dump(result_dic, f, indent=4)
 
 
-def feature_select(feature_file, cpu, cv=-1, hpo=1):
+def feature_select(feature_file, cpu, cv=-1, hpod=.6):
     X, y = ul.load_normal_data(feature_file)
     selector = VarianceThreshold()
     new_x = selector.fit_transform(X)
@@ -91,7 +91,7 @@ def feature_select(feature_file, cpu, cv=-1, hpo=1):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
+    evla_func = partial(process_eval_func, cv=cv, hpod=hpod)
     results = Parallel(n_jobs=cpu)(
         delayed(evla_func)((X[:, feature_idx[:i+1]], y)) for i, idx in enumerate(feature_idx))
     acc_ls = []
@@ -99,18 +99,17 @@ def feature_select(feature_file, cpu, cv=-1, hpo=1):
         acc, *_ = it[0]
         print(f"{i:<2} ----> {acc[0]}")
         acc_ls.append([acc[0], i])
-    acc_ls.sort(key=lambda x: x[1])
     return [i[0] for i in acc_ls]
 
-def feature_mix(files, cv=-1, hpo=0.6):
+def feature_mix(files, cv=-1, hpod=0.6):
     data_ls = [np.genfromtxt(file, delimiter=',')[:, 1:] for file in files]
     mix_data = np.hstack(data_ls)
+    y = np.genfromtxt(files[0], delimiter=',')[:, 0]
     x = mix_data
-    y = mix_data[:, 0]
-    acc_ls = feature_select((x, y), cv=-1, hpo=hpo)
+    acc_ls = feature_select((x, y), cv=-1, hpod=hpod)
     return acc_ls
 
-def own_func(file_ls, feature_file, cluster, n):
+def own_func(file_ls, feature_file, cluster, n, hpod):
     ul.one_file(file_ls, feature_file, cluster, n, idx=len(cluster))
-    metrics, cm = process_eval_func(feature_file, cv=-1, hpo=1)
+    metrics, cm = process_eval_func(feature_file, cv=-1, hpod=hpod)
     return metrics, cm
