@@ -4,6 +4,7 @@
     :Date: 19-1-14 下午3:22
     :Description:
         过早的优化是万恶之源!
+        coding...
 """
 import os
 import json
@@ -43,14 +44,16 @@ def sub_reduce(args):
     size = ','.join(map(str, size))
     cluster_info = ul.reduce_query(type_id, size)
     for n in args.k:
-        ul.reduce_seq(args.f, f'{args.o}_{n}n', n, cluster_info, args.p)
+        n_fea_dir = os.path.join(args.o, f'{args.o}_{n}n')
+        ul.mkdirs(n_fea_dir)
+        ul.reduce_seq(args.f, n_fea_dir, n, cluster_info, args.p)
 
 def sub_eval(args):
     ul.mkdirs(args.o)
     for n in args.k:
-        folder_name = f'{args.o}_{n}n'
+        n_fea_dir = os.path.join(args.o, f'{args.o}_{n}n')
         json_path = os.path.join(args.o, f'{n}n_result.json')
-        cp.all_eval(folder_name, json_path, n, args.cv, args.hpo, args.p)
+        cp.all_eval(n_fea_dir, json_path, n, args.cv, args.hpod, args.p)
         if args.v:
             with open(json_path, 'r') as f:
                 re_dic = json.load(f)
@@ -67,13 +70,13 @@ def sub_plot(args):
 def sub_fs(args):
     ul.mkdirs(args.o)
     if args.mix:
-        acc_ls = cp.feature_mix(args.f, args.p, cv=args.cv, hpo=args.hpo)
+        acc_ls = cp.feature_mix(args.f, args.p, cv=args.cv, hpo=args.hpod)
         filename = f'mix_feature.{args.fmt}'
         fig_path = os.path.join(args.o, filename)
         draw.p_fs(acc_ls, out=fig_path)
     else:
         for file in args.f: 
-            acc_ls = cp.feature_select(file, args.p, cv=args.cv, hpo=args.hpo)
+            acc_ls = cp.feature_select(file, args.p, cv=args.cv, hpo=args.hpod)
             filename = file.split('.')[0].split(os.sep)[-1] + f'.{args.fmt}'
             fig_path = os.path.join(args.o, filename)
             draw.p_fs(acc_ls, out=fig_path)
@@ -106,7 +109,8 @@ def command_parser():
     parser.add_argument('-k', nargs='+', type=int, choices=[1,2,3])
     parser.add_argument('-c', action='store_true', help='compute')
     parser.add_argument('-cv', type=float, help='cross validation fold')
-    parser.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
+    parser.add_argument('-hpo', type=str, help='hyper-parameter optimize,')
+    parser.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize,')
     parser.add_argument('-o', help='output folder name')
     parser.add_argument('-v', action='store_true', help='plot')
     parser.add_argument('-fmt', default="png", help='the format of figures')
@@ -134,8 +138,9 @@ def command_parser():
     parser_c.add_argument('-o', help='the value of reduce command -o')
     parser_c.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
     parser_c.add_argument('-cv', type=float, help='cross validation fold')
-    parser_c.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
-    parser_c.add_argument('-v', action='store_true', help='if visual')
+    parser_c.add_argument('-hpo', type=str, help='hyper-parameter optimize method,')
+    parser_c.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data size')
+    parser_c.add_argument('-v', action='store_true', help='visual')
     parser_c.add_argument('-fmt', default="png", help='the format of figures')
     parser_c.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
                                  default=os.cpu_count()/2, help='output folder name')
@@ -151,7 +156,8 @@ def command_parser():
     parser_e.add_argument('-f', nargs='+', help='feature file')
     parser_e.add_argument('-o', help='output folder')
     parser_e.add_argument('-cv', type=float, help='cross validation fold')
-    parser_e.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
+    parser_e.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
+    parser_e.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
     parser_e.add_argument('-fmt', default="png", help='the format of figures')
     parser_e.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
                                  default=os.cpu_count()/2, help='output folder name')
@@ -160,11 +166,12 @@ def command_parser():
     
     parser_f = subparsers.add_parser("own", help='use your own raa')
     parser_f.add_argument('-f', nargs='+', help='fasta files')
-    parser_f.add_argument('-cluster', help='fasta files')
+    parser_f.add_argument('-cluster', help='amino acid reduction scheme')
     parser_f.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
     parser_f.add_argument('-o', help='output folder')
     parser_f.add_argument('-cv', type=float, help='cross validation fold')
-    parser_f.add_argument('-hpo', type=float, help='hyper-parameter optimize,')
+    parser_f.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
+    parser_f.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
     parser_f.set_defaults(func=sub_own) 
     
     args = parser.parse_args()

@@ -18,6 +18,8 @@ except ImportError:
     import compute as cp  
 
 
+HPOD = 0.6
+
 def model_hpo(x, y):
     model = al.SvmClassifier()
     clf = model.train(x, y)
@@ -41,20 +43,20 @@ def process_eval_func(file, cv=-1, hpo=1): #
     metrics = evaluate(clf, eval_x, eval_y, cv=-1)
     return metrics
 
-def all_eval(folder_n, result_path, n, cv, hpo, cpu):
+def all_eval(n_fea_dir, result_path, n, cv, hpo, cpu):
     to_do_map = {}
     result_dic = {}
     max_work = min(cpu, os.cpu_count())
     with futures.ProcessPoolExecutor(int(max_work)) as pp:
         evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
-        for type_dir, file_ls in ul.parse_path(folder_n, filter_format='csv'):
+        for type_dir, file_ls in ul.parse_path(n_fea_dir, filter_format='csv'):
             for file in file_ls:
                 file_path = os.path.join(type_dir, file)
                 future = pp.submit(evla_func, file_path)
                 type_num = os.path.basename(type_dir)
                 to_do_map[future] = [type_num, f"{file.split('_')[0]}"]
         else:
-            naa_path = os.path.join(folder_n, f'20_{n}n.csv')
+            naa_path = os.path.join(n_fea_dir, f'20_{n}n.csv')
             if os.path.exists(naa_path):
                 future = pp.submit(evla_func, naa_path)
                 to_do_map[future] = ['natural amino acids', '20s']
@@ -77,18 +79,6 @@ def all_eval(folder_n, result_path, n, cv, hpo, cpu):
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f, indent=4)
 
-# def al_comparison(file_path,):
-#     """
-#     :param file_path: feature file path
-#     :return:
-#     """
-#     classifier = {'SVM': al.SvmClassifier, 'RF': al.RfClassifier, 'KNN': al.KnnClassifier}
-#     result_dic = {}
-#     for clf in classifier:
-#         model = drill(classifier[clf], file_path)
-#         metrics, auc = evaluate(model, file_path)
-#         result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
-#     return result_dic
 
 def feature_select(feature_file, cpu, cv=-1, hpo=1):
     X, y = ul.load_normal_data(feature_file)
@@ -112,12 +102,12 @@ def feature_select(feature_file, cpu, cv=-1, hpo=1):
     acc_ls.sort(key=lambda x: x[1])
     return [i[0] for i in acc_ls]
 
-def feature_mix(files, cv=-1, hpo=1):
-    data_ls = [np.genfromtxt(file, delimiter=',')[1:] for file in files]
+def feature_mix(files, cv=-1, hpo=0.6):
+    data_ls = [np.genfromtxt(file, delimiter=',')[:, 1:] for file in files]
     mix_data = np.hstack(data_ls)
-    x = mix_data[:, 1:]
+    x = mix_data
     y = mix_data[:, 0]
-    acc_ls = feature_select((x, y), cv=-1, hpo=1)
+    acc_ls = feature_select((x, y), cv=-1, hpo=hpo)
     return acc_ls
 
 def own_func(file_ls, feature_file, cluster, n):

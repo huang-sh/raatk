@@ -124,24 +124,23 @@ def one_file(file_list, file_path, aa, n, idx=None,raa=None):
                 h.writerow(line1)
             f.close()
 
-def thread_func(file_list, folder_n, n, clusters):
+def thread_func(file_list, fea_dir, n, clusters):
     to_do_map = {}
     with futures.ThreadPoolExecutor(28) as tpe:
         for idx, item in enumerate(clusters):
             tpi, size, cluster, _ = item
             aa = cluster.split('-')
             aa = [i for i in aa if i]
-            type_dir = os.path.join(folder_n, f"type{tpi}")
+            type_dir = os.path.join(fea_dir, f"type{tpi}")
             mkdirs(type_dir)
-            file_path = os.path.join(folder_n, f"type{tpi}", f"{size}_{n}n.csv")
+            file_path = os.path.join(type_dir, f"{size}_{n}n.csv")
             future = tpe.submit(one_file, file_list, file_path, aa, n, idx=size)
             to_do_map[future] = tpi, size, cluster
         done_iter = futures.as_completed(to_do_map)
         for i in done_iter:
             print(i)
 
-def reduce_seq(file_list, folder_n, n, cluster_info, p):
-    mkdirs(folder_n)
+def reduce_seq(file_list, n_fea_dir, n, cluster_info, p):
     to_do_map = {}
     cluster_per = []
     counts = len(cluster_info)
@@ -158,14 +157,14 @@ def reduce_seq(file_list, folder_n, n, cluster_info, p):
                 tmp = [tpi, size]
             if idx % per == 0:
                 clusters = cluster_per.copy()
-                future = ppe.submit(thread_func, file_list, folder_n, n, clusters)
+                future = ppe.submit(thread_func, file_list, n_fea_dir, n, clusters)
                 to_do_map[future] = [idx-per, idx]
                 cluster_per.clear()
             cluster_per.append(item)
         else:
-            future = ppe.submit(thread_func, file_list, folder_n, n, cluster_per)
+            future = ppe.submit(thread_func, file_list, n_fea_dir, n, cluster_per)
             to_do_map[future] = [idx-per, idx]
-        naa_path = os.path.join(folder_n, f'20_{n}n.csv')
+        naa_path = os.path.join(n_fea_dir, f'20_{n}n.csv')
         future = ppe.submit(one_file, file_list, naa_path, NAA, n)
         to_do_map[future] = "20s"
         done_iter = futures.as_completed(to_do_map)
