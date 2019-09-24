@@ -104,7 +104,7 @@ class SvmClassifier:
         if self.is_grid_search:
             svm = self.grid_search(x_train, y_train)
         else:
-            svm = self.clf.fit(x_train, y_train)
+            svm = self.clf.set_params(C=self.C, gamma=self.gamma)
         return svm
 
     def grid_search(self, x_train, y_train):
@@ -112,7 +112,6 @@ class SvmClassifier:
             ('classify', self.clf)
         ])
         grid = GridSearchCV(pipe, cv=5, n_jobs=-1, param_grid=self.param_grid, iid=True)
-        # x_train, _, y_train, _ = train_test_split(x_train, y_train, test_size=0.4, random_state=1, shuffle=True)
         clf = grid.fit(x_train, y_train)
         C, gamma = clf.best_params_['classify__C'], clf.best_params_['classify__gamma'],
         self.best_score = clf.best_score_
@@ -130,9 +129,9 @@ class SvmClassifier:
             gamma_range = np.logspace(g_start, g_end, g_end - g_end + 1, base=2)
             self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
         else:
-            print('lost parmameters, will use default parameters ')
-            C_range = np.logspace(-5, 15, 21, base=2)  # 21
-            gamma_range = np.logspace(-15, 3, 19, base=2)  # 19
+            print('grid search...')
+            C_range = np.logspace(-4, 9, 10, base=2)  # 10
+            gamma_range = np.logspace(-8, 3, 8, base=2)  # 5
             # self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
             self.param_grid = [{'classify__kernel': [kernel], 'classify__C': C_range, 'classify__gamma': gamma_range}]
 

@@ -80,32 +80,44 @@ def p_comparison_type(diff_size, same_size, types_label, out):
     plt.savefig(out, bbox_inches="tight")
 
 
+# def p_acc_heat(data, vmin, vmax, xticklabels, out):
+#     ck = data.shape
+#     fig = plt.figure(figsize=(22, 44))
+#     ax = plt.subplot(1, 1, 1)
+#     norm = BoundaryNorm(boundaries=np.linspace(vmin, vmax, 41), ncolors=256)
+#     # cmap = LinearSegmentedColormap.from_list('mycmap', ['lightgreen', 'yellow', 'red'])
+#     im = ax.imshow(data, cmap='RdYlGn_r', norm=norm)
+#     divider = make_axes_locatable(ax)
+#     cax = divider.append_axes("right", size="1.5%", pad=0.05)
+#     # cbar.set_clim(0.5, 1.0)
+#     plt.colorbar(im, cax=cax)
+#     ax.set_xticks(np.arange(ck[1]))
+#     ax.set_xticklabels(xticklabels, fontsize=10)
+#     ax.set_yticks(np.arange(ck[0]))
+#     ax.set_yticklabels(range(2, 21), fontsize=10)
+#     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+#              rotation_mode="anchor")
+#     for i in range(ck[0]):
+#         for j in range(ck[1]):
+#             if data[i, j] >= -3:
+#                 acc = '%.2f' % (data[i, j] * 100)
+#                 if ck[1] > 45:
+#                     ax.text(j, i, acc, ha="center", va="center", color="k", fontsize=6,)
+#                 else:
+#                     ax.text(j, i, acc, ha="center", va="center", color="k", fontsize=11, )
+#     fig.tight_layout()
+#     plt.savefig(out, dpi=600, bbox_inches="tight")
+
+# TODO
 def p_acc_heat(data, vmin, vmax, xticklabels, out):
-    ck = data.shape
-    fig = plt.figure(figsize=(22, 44))
-    ax = plt.subplot(1, 1, 1)
-    norm = BoundaryNorm(boundaries=np.linspace(vmin, vmax, 41), ncolors=256)
-    # cmap = LinearSegmentedColormap.from_list('mycmap', ['lightgreen', 'yellow', 'red'])
-    im = ax.imshow(data, cmap='RdYlGn_r', norm=norm)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="1.5%", pad=0.05)
-    # cbar.set_clim(0.5, 1.0)
-    plt.colorbar(im, cax=cax)
-    ax.set_xticks(np.arange(ck[1]))
-    ax.set_xticklabels(xticklabels, fontsize=10)
-    ax.set_yticks(np.arange(ck[0]))
-    ax.set_yticklabels(range(2, 21), fontsize=10)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-             rotation_mode="anchor")
-    for i in range(ck[0]):
-        for j in range(ck[1]):
-            if data[i, j] >= -3:
-                acc = '%.2f' % (data[i, j] * 100)
-                if ck[1] > 45:
-                    ax.text(j, i, acc, ha="center", va="center", color="k", fontsize=6,)
-                else:
-                    ax.text(j, i, acc, ha="center", va="center", color="k", fontsize=11, )
-    fig.tight_layout()
+    cr = data.shape
+    mask = data <= 0
+    ax = sns.heatmap(data, vmin=vmin, vmax=vmax, cmap='RdYlGn_r', mask=mask, annot=True, fmt=".4",
+                      annot_kws={"fontsize":5, "color": "black"}, xticklabels=xticklabels, yticklabels=range(2, 21))
+    
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    ax.set_xlabel('Type', fontsize=8)
+    ax.set_ylabel('Cluster Size', fontsize=8)
     plt.savefig(out, dpi=600, bbox_inches="tight")
 
 def p_roc_al(param, out):

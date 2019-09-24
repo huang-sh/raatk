@@ -40,14 +40,14 @@ def read_fasta(seq):
             continue
         if line[0] == '>':
             if lines:
-                yield title, ''.join(lines)
+                yield des, ''.join(lines)
                 lines = []
-            title = line[1:].strip()
+            des = line[1:].strip()
         else:
             line = line.replace(' ', '').replace('\r', '')
             lines.append(line.strip())
     else:
-        yield title, ''.join(lines)
+        yield des, ''.join(lines)
 
 
 def reduce(seqs, aa, raa=None):

@@ -11,17 +11,20 @@ from sklearn.feature_selection import SelectKBest, VarianceThreshold
 try:
     from . import classify as al
     from . import utils as ul
-    from . import compute as cp
 except ImportError:
     import classify as al
     import utils as ul
-    import compute as cp  
-
+ 
 
 HPOD = 0.6
 
-def model_hpo(x, y):
-    model = al.SvmClassifier()
+def model_hpo(x, y, **kwargs):
+    c = kwargs.get("c", None)
+    g = kwargs.get("gamma", None)
+    if c and g:
+        model = al.SvmClassifier(grid_search=False, C=c, gamma=g)
+    else:
+        model = al.SvmClassifier()
     clf = model.train(x, y)
     return clf
     
@@ -36,19 +39,35 @@ def evaluate(clf, x, y, cv=-1, **kwargs):
         metrics = evalor.holdout(k)
     return metrics
 
-def process_eval_func(file, cv=-1, hpod=.6): # 
+def process_eval_func(file, cv=-1, hpod=.6, **kwargs): 
+    c = kwargs.get("c", None)
+    g = kwargs.get("gamma", None)
     hpo_x, hpo_y = ul.data_to_hpo(file, hpod=hpod)
-    clf = model_hpo(hpo_x, hpo_y)
+    if c and g:
+        clf = model_hpo(hpo_x, hpo_y, **kwargs)
+    else:
+        clf = model_hpo(hpo_x, hpo_y)
     eval_x, eval_y = ul.load_normal_data(file)
-    metrics = evaluate(clf, eval_x, eval_y, cv=-1)
+    metrics = evaluate(clf, eval_x, eval_y, cv=cv)
     return metrics
+
+def para_search(naa_path, hpod=.6):
+    hpo_x, hpo_y = ul.data_to_hpo(naa_path, hpod=hpod)
+    clf = model_hpo(hpo_x, hpo_y)
+    para = clf.get_params()
+    c = para["classify__C"]
+    gamma = para["classify__gamma"]
+    return c, gamma
 
 def all_eval(n_fea_dir, result_path, n, cv, hpod, cpu):
     to_do_map = {}
     result_dic = {}
     max_work = min(cpu, os.cpu_count())
+    naa_path = os.path.join(n_fea_dir, f'20_{n}n.csv')
+    c, gamma = para_search(naa_path, hpod=hpod)
+    para = {"c": c, "gamma": gamma}
     with futures.ProcessPoolExecutor(int(max_work)) as pp:
-        evla_func = partial(process_eval_func, cv=cv, hpod=hpod)
+        evla_func = partial(process_eval_func, cv=cv, hpod=hpod, **para)
         for type_dir, file_ls in ul.parse_path(n_fea_dir, filter_format='csv'):
             for file in file_ls:
                 file_path = os.path.join(type_dir, file)
@@ -56,7 +75,6 @@ def all_eval(n_fea_dir, result_path, n, cv, hpod, cpu):
                 type_num = os.path.basename(type_dir)
                 to_do_map[future] = [type_num, f"{file.split('_')[0]}"]
         else:
-            naa_path = os.path.join(n_fea_dir, f'20_{n}n.csv')
             if os.path.exists(naa_path):
                 future = pp.submit(evla_func, naa_path)
                 to_do_map[future] = ['natural amino acids', '20s']
@@ -74,8 +92,8 @@ def all_eval(n_fea_dir, result_path, n, cv, hpod, cpu):
                 result_dic.setdefault(Type, {})
                 result_dic[Type][size] = one_dic
         for t in result_dic:
-            print(t)
             result_dic[t]['20'] = naa_dic
+    print(f"k : {n}, c : {c}, gamma : {gamma}")
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f, indent=4)
 
@@ -106,10 +124,10 @@ def feature_mix(files, cv=-1, hpod=0.6):
     mix_data = np.hstack(data_ls)
     y = np.genfromtxt(files[0], delimiter=',')[:, 0]
     x = mix_data
-    acc_ls = feature_select((x, y), cv=-1, hpod=hpod)
+    acc_ls = feature_select((x, y), cv=cv, hpod=hpod)
     return acc_ls
 
-def own_func(file_ls, feature_file, cluster, n, hpod):
+def own_func(file_ls, feature_file, cluster, n, hpod, **kwargs):
     ul.one_file(file_ls, feature_file, cluster, n, idx=len(cluster))
-    metrics, cm = process_eval_func(feature_file, cv=-1, hpod=hpod)
+    metrics, cm = process_eval_func(feature_file, cv=-1, hpod=hpod, **kwargs)
     return metrics, cm

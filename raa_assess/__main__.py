@@ -76,17 +76,22 @@ def sub_fs(args):
         draw.p_fs(acc_ls, out=fig_path)
     else:
         for file in args.f: 
-            acc_ls = cp.feature_select(file, args.p, cv=args.cv, hpo=args.hpod)
+            acc_ls = cp.feature_select(file, args.p, cv=args.cv, hpod=args.hpod)
             filename = file.split('.')[0].split(os.sep)[-1] + f'.{args.fmt}'
             fig_path = os.path.join(args.o, filename)
             draw.p_fs(acc_ls, out=fig_path)
 
 def sub_own(args):
     ul.mkdirs(args.o)
+    c = args.c
+    g = args.g
     for n in args.k:
         cluster = args.cluster.split("-")
         feature_file_path = os.path.join(args.o, f"{len(cluster)}_{n}n.csv")
-        metric, cm = cp.own_func(args.f, feature_file_path, cluster, n, args.hpod)
+        if c and g:
+            metric, cm = cp.own_func(args.f, feature_file_path, cluster, n, args.hpod, **{"c": c, "gamma": g})
+        else:
+            metric, cm = cp.own_func(args.f, feature_file_path, cluster, n, args.hpod)
         report_file = os.path.join(args.o, f"{n}n_report.txt")
         ul.print_report(metric, cm, report_file)
     
@@ -155,7 +160,7 @@ def command_parser():
     parser_e = subparsers.add_parser("fs", help='analyze and plot evaluate result')
     parser_e.add_argument('-f', nargs='+', help='feature file')
     parser_e.add_argument('-o', help='output folder')
-    parser_e.add_argument('-cv', type=float, help='cross validation fold')
+    parser_e.add_argument('-cv', type=float, default=-1, help='cross validation fold')
     parser_e.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
     parser_e.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
     parser_e.add_argument('-fmt', default="png", help='the format of figures')
@@ -172,6 +177,8 @@ def command_parser():
     parser_f.add_argument('-cv', type=float, help='cross validation fold')
     parser_f.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
     parser_f.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
+    parser_f.add_argument('-c', type=float, default=0, help='svm parameter C')
+    parser_f.add_argument('-g', type=float, default=0, help='svm parameter gamma')   
     parser_f.set_defaults(func=sub_own) 
     
     args = parser.parse_args()
