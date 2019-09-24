@@ -33,10 +33,10 @@ def evaluate(clf, x, y, cv=-1, **kwargs):
     k = int(cv)
     if k == -1:
         metrics = evalor.loo() ## to do
-    elif int(k):
+    elif int(k) > 1:
         metrics = evalor.kfold(k)
-    else:
-        metrics = evalor.holdout(k)
+    # else:
+    #     metrics = evalor.holdout(k)
     return metrics
 
 def process_eval_func(file, cv=-1, hpod=.6, **kwargs): 

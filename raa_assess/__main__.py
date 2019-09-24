@@ -165,7 +165,7 @@ def command_parser():
     parser_e.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
     parser_e.add_argument('-fmt', default="png", help='the format of figures')
     parser_e.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=os.cpu_count()/2, help='output folder name')
+                                 default=int(os.cpu_count()/2), help='output folder name')
     parser_e.add_argument('-mix', action='store_true', help='feature mix')
     parser_e.set_defaults(func=sub_fs)
     
