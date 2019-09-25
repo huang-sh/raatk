@@ -109,7 +109,7 @@ def one_file(file_list, file_path, aa, n, idx=None,raa=None):
         file_path = os.path.join(file_path, file_name)
     elif os.path.isfile(file_path):
         file_path = file_path
-    with open(file_path, 'w') as handle:
+    with open(file_path, 'w', newline="\n") as handle:
         h = csv.writer(handle)
         for idx, file in enumerate(file_list):
             f = open(file, 'r')
