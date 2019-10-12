@@ -33,6 +33,7 @@ def sub_view(args):
         print(info)
     
 def sub_reduce(args):
+    ul.exist_file(*args.f)
     tpi, size = args.t, args.s
     if "-" in tpi[0]:
         ss = tpi[0].split("-")
@@ -60,6 +61,7 @@ def sub_eval(args):
             ul.eval_plot(re_dic, n, args.o, fmt=args.fmt)
 
 def sub_plot(args):
+    ul.exist_file(*args.f)
     ul.mkdirs(args.o)
     for re_file in args.f:
         with open(re_file, 'r') as f:
@@ -68,6 +70,7 @@ def sub_plot(args):
         ul.eval_plot(re_dic, int(n), args.o, fmt=args.fmt)
 
 def sub_fs(args):
+    ul.exist_file(*args.f)
     ul.mkdirs(args.o)
     if args.mix:
         acc_ls = cp.feature_mix(args.f, args.p, cv=args.cv, hpo=args.hpod)
@@ -82,6 +85,7 @@ def sub_fs(args):
             draw.p_fs(acc_ls, out=fig_path)
 
 def sub_own(args):
+    ul.exist_file(*args.f)
     ul.mkdirs(args.o)
     c = args.c
     g = args.g
@@ -125,56 +129,58 @@ def command_parser():
     subparsers = parser.add_subparsers(help='sub-command help')
 
     parser_v = subparsers.add_parser('view', help='view the reduce amino acids scheme')
-    parser_v.add_argument('-t', '--type', nargs='+', type=int, choices=list([i for i in range(1, 74)]),help='type id')
-    parser_v.add_argument('-s', '--size', nargs='+', type=int, choices=list([i for i in range(2, 20)]), help='reduce size')
+    parser_v.add_argument('-t', '--type', nargs='+', type=int, required=True, 
+                          choices=list([i for i in range(1, 74)]),help='type id')
+    parser_v.add_argument('-s', '--size', nargs='+', type=int, required=True, 
+                          choices=list([i for i in range(2, 20)]), help='reduce size')
     parser_v.set_defaults(func=sub_view)
 
     parser_a = subparsers.add_parser('reduce', help='reduce sequence and extract feature')
-    parser_a.add_argument('-f', nargs='+', help='fasta files')
-    parser_a.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
-    parser_a.add_argument('-t', nargs='+', help='type id')
-    parser_a.add_argument('-s', nargs='+', help='reduce size')
-    parser_a.add_argument('-o', help='output folder basename')
+    parser_a.add_argument('-f', nargs='+', required=True, help='fasta files')
+    parser_a.add_argument('-k', nargs='+', type=int, choices=[1,2,3], required=True, help='K-tuple value')
+    parser_a.add_argument('-t', nargs='+', required=True, help='type id')
+    parser_a.add_argument('-s', nargs='+', required=True, help='reduce size')
+    parser_a.add_argument('-o', required=True, help='output folder basename')
     parser_a.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=os.cpu_count()/2, help='output folder name')
+                                 default=os.cpu_count()/2, help='cpu core number')
     parser_a.set_defaults(func=sub_reduce)
 
     parser_c = subparsers.add_parser('eval', help='evaluate models')
-    parser_c.add_argument('-o', help='the value of reduce command -o')
-    parser_c.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
-    parser_c.add_argument('-cv', type=float, help='cross validation fold')
+    parser_c.add_argument('-o', required=True, help='output folder basename')
+    parser_c.add_argument('-k', nargs='+', type=int, choices=[1,2,3], required=True, help='K-tuple value')
+    parser_c.add_argument('-cv', type=float, default=-1, required=True, help='cross validation fold')
     parser_c.add_argument('-hpo', type=str, help='hyper-parameter optimize method,')
     parser_c.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data size')
-    parser_c.add_argument('-v', action='store_true', help='visual')
-    parser_c.add_argument('-fmt', default="png", help='the format of figures')
+    parser_c.add_argument('-v', action='store_true', help='visual result')
+    parser_c.add_argument('-fmt', default="png", help='figure format')
     parser_c.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='output folder name')
+                                 default=int(os.cpu_count()/2), help='cpu core number')
     parser_c.set_defaults(func=sub_eval)
     
     parser_d = subparsers.add_parser("plot", help='analyze and plot evaluate result')
-    parser_d.add_argument('-f', nargs='+', help='the result json file')
-    parser_d.add_argument('-fmt', default="png", help='the format of figures')
-    parser_d.add_argument('-o', help='output folder')
+    parser_d.add_argument('-f', nargs='+', required=True, help='the result json file')
+    parser_d.add_argument('-fmt', default="png", help='figure format')
+    parser_d.add_argument('-o', required=True, help='output folder')
     parser_d.set_defaults(func=sub_plot)
 
     parser_e = subparsers.add_parser("fs", help='analyze and plot evaluate result')
-    parser_e.add_argument('-f', nargs='+', help='feature file')
-    parser_e.add_argument('-o', help='output folder')
+    parser_e.add_argument('-f', nargs='+', required=True, help='feature file')
+    parser_e.add_argument('-o', required=True, help='output folder')
     parser_e.add_argument('-cv', type=float, default=-1, help='cross validation fold')
     parser_e.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
     parser_e.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
-    parser_e.add_argument('-fmt', default="png", help='the format of figures')
+    parser_e.add_argument('-fmt', default="png", help='figure format')
     parser_e.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='output folder name')
+                                 default=int(os.cpu_count()/2), help='cpu core number')
     parser_e.add_argument('-mix', action='store_true', help='feature mix')
     parser_e.set_defaults(func=sub_fs)
     
     parser_f = subparsers.add_parser("own", help='use your own raa')
-    parser_f.add_argument('-f', nargs='+', help='fasta files')
-    parser_f.add_argument('-cluster', help='amino acid reduction scheme')
-    parser_f.add_argument('-k', nargs='+', type=int, choices=[1,2,3], help='feature extract method')
-    parser_f.add_argument('-o', help='output folder')
-    parser_f.add_argument('-cv', type=float, help='cross validation fold')
+    parser_f.add_argument('-f', nargs='+', required=True, help='fasta files')
+    parser_f.add_argument('-cluster', required=True, help='amino acid reduction scheme')
+    parser_f.add_argument('-k', nargs='+', type=int, choices=[1,2,3], required=True, help='K-tuple value')
+    parser_f.add_argument('-o', required=True, help='output folder')
+    parser_f.add_argument('-cv', type=float, default=-1, help='cross validation fold')
     parser_f.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
     parser_f.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
     parser_f.add_argument('-c', type=float, default=0, help='svm parameter C')

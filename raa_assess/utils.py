@@ -2,6 +2,7 @@ import os
 import csv
 import re
 import sqlite3
+from pathlib import Path
 from itertools import product
 from concurrent import futures
 
@@ -297,3 +298,13 @@ def print_report(metric, cm, report_file):
             f.write(linei)
         f.write("\n\n")
         f.write(TEXT)
+        
+
+def exist_file(*file_path):
+    for file in file_path:
+        f = Path(file)
+        if f.is_file():
+            pass
+        else:
+            print("file not found!")
+            exit()
