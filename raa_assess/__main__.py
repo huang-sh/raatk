@@ -150,7 +150,7 @@ def command_parser():
     parser_c.add_argument('-k', nargs='+', type=int, choices=[1,2,3], required=True, help='K-tuple value')
     parser_c.add_argument('-cv', type=float, default=-1, required=True, help='cross validation fold')
     parser_c.add_argument('-hpo', type=str, help='hyper-parameter optimize method,')
-    parser_c.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data size')
+    parser_c.add_argument('-hpod', type=float, default=.5, help='hyper-parameter optimize data size')
     parser_c.add_argument('-v', action='store_true', help='visual result')
     parser_c.add_argument('-fmt', default="png", help='figure format')
     parser_c.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
@@ -168,7 +168,7 @@ def command_parser():
     parser_e.add_argument('-o', required=True, help='output folder')
     parser_e.add_argument('-cv', type=float, default=-1, help='cross validation fold')
     parser_e.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
-    parser_e.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
+    parser_e.add_argument('-hpod', type=float, default=.5, help='hyper-parameter optimize data')
     parser_e.add_argument('-fmt', default="png", help='figure format')
     parser_e.add_argument('-p', type=int, choices=list([i for i in range(1, os.cpu_count())]),
                                  default=int(os.cpu_count()/2), help='cpu core number')
@@ -182,7 +182,7 @@ def command_parser():
     parser_f.add_argument('-o', required=True, help='output folder')
     parser_f.add_argument('-cv', type=float, default=-1, help='cross validation fold')
     parser_f.add_argument('-hpo', type=str, help='hyper-parameter optimize method')
-    parser_f.add_argument('-hpod', type=float, default=.6, help='hyper-parameter optimize data')
+    parser_f.add_argument('-hpod', type=float, default=.5, help='hyper-parameter optimize data')
     parser_f.add_argument('-c', type=float, default=0, help='svm parameter C')
     parser_f.add_argument('-g', type=float, default=0, help='svm parameter gamma')   
     parser_f.set_defaults(func=sub_own) 
