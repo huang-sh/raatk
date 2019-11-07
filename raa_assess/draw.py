@@ -136,6 +136,6 @@ def p_fs(score_ls, out):
     max_acc = max(score_ls)
     best_n = score_ls.index(max_acc)
     plt.scatter(best_n, max_acc, marker='*', c='r')
-    plt.text(best_n, max_acc + 0.002, f'{best_n}, {max_acc:.4f}',
+    plt.text(best_n, max_acc + 0.002, f'{best_n+1}, {max_acc:.4f}',
              ha='center', va='bottom', fontsize=6, fontweight='bold')
     plt.savefig(out, dpi=600)
