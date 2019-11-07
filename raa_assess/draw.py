@@ -134,7 +134,7 @@ def p_fs(score_ls, out):
     plt.figure()
     plt.plot(range(1, len(score_ls) + 1), score_ls)
     max_acc = max(score_ls)
-    best_n = score_ls.index(max_acc) + 1
+    best_n = score_ls.index(max_acc)
     plt.scatter(best_n, max_acc, marker='*', c='r')
     plt.text(best_n, max_acc + 0.002, f'{best_n}, {max_acc:.4f}',
              ha='center', va='bottom', fontsize=6, fontweight='bold')
