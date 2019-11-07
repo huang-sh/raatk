@@ -11,6 +11,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import colorbar
+from matplotlib.ticker import MaxNLocator
+
 from sklearn.metrics import roc_curve, roc_auc_score
 
 
@@ -131,11 +133,12 @@ def p_roc_al(param, out):
     plt.savefig(out, dpi=600)
 
 def p_fs(score_ls, out):
-    plt.figure()
+    ax = plt.figure().gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.plot(range(1, len(score_ls) + 1), score_ls)
     max_acc = max(score_ls)
-    best_n = score_ls.index(max_acc)
+    best_n = score_ls.index(max_acc) + 1
     plt.scatter(best_n, max_acc, marker='*', c='r')
-    plt.text(best_n, max_acc + 0.002, f'{best_n+1}, {max_acc:.4f}',
+    plt.text(best_n, max_acc + 0.002, f'{best_n}, {max_acc:.4f}',
              ha='center', va='bottom', fontsize=6, fontweight='bold')
     plt.savefig(out, dpi=600)
