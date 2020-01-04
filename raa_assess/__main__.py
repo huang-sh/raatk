@@ -306,11 +306,10 @@ def command_parser():
     parser_tra.set_defaults(func=sub_transfer)
     
     args = parser.parse_args()
-    args.func(args)
-    # try:
-    #     args.func(args)
-    # except AttributeError:
-    #     print("error!")
+    try:
+        args.func(args)
+    except AttributeError:
+        pass
 
 if __name__ == '__main__':
     command_parser()

@@ -10,7 +10,7 @@ setup(name='raa_assess',
     packages=['raa_assess'],
     install_requires=[
         'numpy>=1.16.2',
-        'matplotlib>=3.0.3',
+        'matplotlib>=3.1.1',
         'scikit-learn>=0.22.1',
         'seaborn>=0.9.0',
         
