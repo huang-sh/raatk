@@ -3,6 +3,7 @@ import csv
 import json
 import sqlite3
 from pathlib import Path
+from functools import partial
 from concurrent import futures
 
 import joblib
@@ -10,6 +11,7 @@ import numpy as np
 from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
 from sklearn.metrics import plot_roc_curve
 
 try:
@@ -136,19 +138,21 @@ def extract_to_file(feature_file, output, k, gap, lam, raa, label=0, mode="w"):
                 line = [label] + aa_vec
             h.writerow(line)
             
-def batch_extract(in_dir, out_dir, k, gap, lam, label=0, mode="w"):
-    max_work = sum([len([i for i in types.iterdir()]) for types in in_dir.iterdir()])
-    to_do_map = [] 
-    with futures.ProcessPoolExecutor(max_work) as tpe:
-        for types in in_dir.iterdir():       
-            for size_dir in types.iterdir():
-                output = out_dir / types.name / (size_dir.stem + ".csv")
-                output.parent.mkdir(exist_ok=True)
-                raa_str = size_dir.name.split("-")[-1]
-                future = tpe.submit(extract_to_file, size_dir, output, k, gap,
-                                     lam, list(raa_str), label=label, mode=mode)
-                to_do_map.append(future)
-        done_iter = futures.as_completed(to_do_map)
+# TODO - IO optimization     
+def batch_extract(in_dir, out_dir, k, gap, lam, label=0, mode="w", n_jobs=1):
+    def params(size_dir, type_dir):
+        output = type_dir / (size_dir.stem + ".csv")
+        raa_str = size_dir.stem.split("-")[-1]
+        print(size_dir)
+        return size_dir, output, list(raa_str)
+
+    extract_fun = partial(extract_to_file, k=k, gap=gap, 
+                          lam=lam, label=label, mode=mode, n_jobs=1)
+    with Parallel(n_jobs=n_jobs) as pl:
+        for types in in_dir.iterdir():
+            type_dir = out_dir / types.name
+            type_dir.mkdir(exist_ok=True)
+            pl(delayed(extract_fun)(*params(size_dir, type_dir)) for size_dir in types.iterdir())
 
 def roc_eval(x, y, model, out):
     svc_disp = plot_roc_curve(model, x, y)

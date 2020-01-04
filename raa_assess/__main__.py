@@ -61,7 +61,7 @@ def sub_reduce(args):
                 shutil.copyfile(file, naa_dir / "20-ACDEFGHIKLMNPQRSTVWY")
                 
 def sub_extract(args):
-    k, gap, lam = args.kmer, args.gap, args.lam
+    k, gap, lam, n_jobs = args.kmer, args.gap, args.lam, args.process
     if args.directory:
         if args.merge:
             out = Path(args.output[0])
@@ -71,13 +71,15 @@ def sub_extract(args):
                 idx = idx if args.label_f else None
                 indir = Path(dire)
                 out.mkdir(exist_ok=True)
-                ul.batch_extract(indir, out, k, gap, lam, label=idx, mode="a+")
+                ul.batch_extract(indir, out, k, gap, lam, label=idx,
+                                  mode="a+", n_jobs=n_jobs)
         else:
             for idx, (dire, out) in enumerate(zip(args.file, args.output)):
                 label = idx if args.label_f else None
                 indir, outdir = Path(dire), Path(out)
                 outdir.mkdir(exist_ok=True)
-                ul.batch_extract(indir, outdir, k, gap, lam, label=label, mode="w")
+                ul.batch_extract(indir, outdir, k, gap, lam, label=label,
+                                  mode="w", n_jobs=n_jobs)
     else:
         if args.merge: 
             out = Path(args.output[0])
@@ -225,6 +227,8 @@ def command_parser():
     parser_ex.add_argument('-raa', help='reduced amino acid cluster')
     parser_ex.add_argument('-m', '--merge', action='store_true', help='merge feature files into one')
     parser_ex.add_argument('-o', '--output', nargs='+', required=True, help='output directory')
+    parser_ex.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=1, help='cpu number')
     parser_ex.add_argument('--label-f', action='store_false', help='feature label')
     parser_ex.set_defaults(func=sub_extract)
 
@@ -243,7 +247,7 @@ def command_parser():
     parser_t.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
     parser_t.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
     parser_t.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=1, help='process number')
+                                 default=1, help='cpu number')
     parser_t.set_defaults(func=sub_train)
     
     parser_p = subparsers.add_parser('predict', help='predict')
