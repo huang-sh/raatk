@@ -1,27 +1,42 @@
 import os
 import csv
-import re
+import json
 import sqlite3
 from pathlib import Path
-from itertools import product
 from concurrent import futures
 
+import joblib
 import numpy as np
 from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from sklearn.metrics import plot_roc_curve
 
 try:
     from . import draw
+    from . import feature as fea
 except ImportError:
     import draw
+    import feature as fea
 
 
 BASE_PATH = os.path.dirname(__file__)
-RAA_DB = os.path.join(BASE_PATH, 'raa_data.db')
-NAA = ['A', 'G', 'S', 'T', 'R', 'Q', 'E', 'K', 'N', 'D',
-    'C', 'H', 'I', 'L', 'M', 'V', 'F', 'Y', 'P', 'W']
+RAA_DB = os.path.join(BASE_PATH, 'nr_raa_data.db')
+NAA = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 
+       'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
 
+def check_aa(aa):
+    if aa[0] == "-" or aa[-1] == "-":
+        raise ValueError("amino acid cluster is wrong!")
+    if "-" not in aa:
+        raise ValueError("need an amino acid cluster!")
+    aa = aa.strip().upper()
+    cls_ls = list(aa.replace("-", "")).sort()
+    if NAA.sort() != cls_ls:
+        raise ValueError("amino acid cluster is wrong!")
+    
+# TODO - query optimization
 def reduce_query(type_id, size):
     conn = sqlite3.connect(RAA_DB)
     cursor = conn.cursor()
@@ -35,20 +50,20 @@ def reduce_query(type_id, size):
     return raa_clusters
 
 def read_fasta(seq):
-    lines = []
+    seq_ls = []
     for line in seq:
+        line = line.strip()
         if not line:
             continue
         if line[0] == '>':
-            if lines:
-                yield des, ''.join(lines)
-                lines = []
-            des = line[1:].strip()
+            if seq_ls:
+                yield descr, ''.join(seq_ls)
+                seq_ls.clear()
+            descr = line
         else:
-            line = line.replace(' ', '').replace('\r', '')
-            lines.append(line.strip())
+            seq_ls.append(line)
     else:
-        yield des, ''.join(lines)
+        yield descr, ''.join(seq_ls)
 
 
 def reduce(seqs, aa, raa=None):
@@ -59,184 +74,141 @@ def reduce(seqs, aa, raa=None):
     :return:
     """
     if not raa:
-        raa = [i[0] for i in aa]
+        raa = [i.strip()[0] for i in aa]
     for i, j in zip(aa, raa):
         if j not in i:
             raise ValueError(f'raa or clustered_aa is wrong!')
     aa_dic = dict(zip(raa, aa))
     for seq in seqs:
-        title, seq = seq
+        descr, seq = seq
         for key, val in aa_dic.items():
             if key == val:
                 continue
             else:
                 for ele in val:
                     seq = seq.replace(ele, key)
-        yield title, seq
+        yield descr, seq
 
+            
+def reduce_to_file(file, aa, output,):
+    with output.open("w") as wh:
+        rh = open(file, "r")
+        h = csv.writer(wh)
+        seqs = read_fasta(rh)
+        reduced_seqs = reduce(seqs, aa)
+        for descr, r_seq in reduced_seqs:
+            wh.write(descr)
+            wh.write("\n")
+            for i in range(len(r_seq) // 80 + 1):
+                wh.write(r_seq[i*80:(i+1)*80])
+                wh.write("\n")
+            else:
+                wh.write(r_seq[(i+1)*80:])
+        rh.close()
 
-def seq_aac(seqs, raa, n=1):
-    """ extract aac feature
-    :param seqs: seq lines
-    :param raa: representative aa, list
-    :param n: k-mer, int
-    :return:
-    """
-    aa = [''.join(aa) for aa in product(raa, repeat=n)]
-    for seq in seqs:
-        title, seq = seq
-        aa_fre = []
-        seq_len = len(seq) -n + 1
-        for a in aa:
-            reg = re.compile(f"(?={a})")
-            num = len(reg.findall(seq))
-            aa_fre.append(num)
-        aa_fre = [seq.count(i)/seq_len for i in aa]  # (len(seq)-n+1)
-        yield title, aa_fre
-
-def one_file(file_list, file_path, aa, n, idx=None,raa=None):
-    """ write feature vector to a file
-    :param file_list: train file list, list
-    :param file_path: one size file path, string
-    :param aa: cluster aa, list or tuple
-    :param n: k-mer, int
-    :param idx: index of reduced scheme in a type,
-    :param raa: representative aa, list or tuple
-    :return:
-    """
-    
-    if os.path.isdir(file_path):
-        file_name = f'{idx}_{n}n.csv'
-        file_path = os.path.join(file_path, file_name)
-    elif os.path.isfile(file_path):
-        file_path = file_path
-    with open(file_path, 'w', newline="\n") as handle:
-        h = csv.writer(handle)
-        for idx, file in enumerate(file_list):
-            f = open(file, 'r')
-            seq = read_fasta(f)
-            simple_seq = reduce(seq, aa, raa)
-            if not raa:
-                raa = [i[0] for i in aa]
-            base_aac = seq_aac(simple_seq, raa, n)
-            for a in base_aac:
-                line0 = [v for v in a[1]]
-                line1 = [idx] + line0
-                h.writerow(line1)
-            f.close()
-
-def thread_func(file_list, fea_dir, n, clusters):
-    to_do_map = {}
-    with futures.ThreadPoolExecutor(28) as tpe:
-        for idx, item in enumerate(clusters):
-            tpi, size, cluster, _ = item
+def batch_reduce(file, cluster_info, out_dir):
+    with futures.ThreadPoolExecutor(len(cluster_info)) as tpe:
+        to_do_map = {}
+        for idx, item in enumerate(cluster_info, 1):
+            type_id, size, cluster, _ = item
+            aa = [i[0] for i in cluster.split("-")]
+            type_n = "".join(["type",str(type_id)])
+            rfile = out_dir / type_n / "-".join([str(size)]+["".join(aa)]) 
+            mkdirs(rfile.parent)
             aa = cluster.split('-')
-            aa = [i for i in aa if i]
-            type_dir = os.path.join(fea_dir, f"type{tpi}")
-            mkdirs(type_dir)
-            file_path = os.path.join(type_dir, f"{size}_{n}n.csv")
-            future = tpe.submit(one_file, file_list, file_path, aa, n, idx=size)
-            to_do_map[future] = tpi, size, cluster
+            future = tpe.submit(reduce_to_file, file, aa, rfile)
+            to_do_map[future] = type_id, size, cluster
         done_iter = futures.as_completed(to_do_map)
         for i in done_iter:
-            print(i)
+            type_id, size, cluster = to_do_map[i]
+            print("done %s %s %s" % (type_id, size, cluster)) 
 
-def reduce_seq(file_list, n_fea_dir, n, cluster_info, p):
-    to_do_map = {}
-    cluster_per = []
-    counts = len(cluster_info)
-    max_work = min(p, os.cpu_count(), counts)
-    max_work = max(1, max_work)
-    per = int(counts / max_work)
-    tmp = []
-    with futures.ProcessPoolExecutor(int(max_work)) as ppe:
-        for idx, item in enumerate(cluster_info, 1):
-            tpi, size, _, _ = item
-            if tmp == [tpi, size]:
-                continue
+def extract_to_file(feature_file, output, k, gap, lam, raa, label=0, mode="w"):
+    with open(feature_file, "r") as rh, open(output, mode) as wh:
+        h = csv.writer(wh)
+        seqs = read_fasta(rh)
+        for seq in seqs:
+            _, seq = seq
+            aa_vec = fea.seq_aac(seq, raa, k=k, gap=gap, lam=lam)
+            if label is None:
+                line = aa_vec
             else:
-                tmp = [tpi, size]
-            if idx % per == 0:
-                clusters = cluster_per.copy()
-                future = ppe.submit(thread_func, file_list, n_fea_dir, n, clusters)
-                to_do_map[future] = [idx-per, idx]
-                cluster_per.clear()
-            cluster_per.append(item)
-        else:
-            future = ppe.submit(thread_func, file_list, n_fea_dir, n, cluster_per)
-            to_do_map[future] = [idx-per, idx]
-        naa_path = os.path.join(n_fea_dir, f'20_{n}n.csv')
-        future = ppe.submit(one_file, file_list, naa_path, NAA, n)
-        to_do_map[future] = "20s"
+                line = [label] + aa_vec
+            h.writerow(line)
+            
+def batch_extract(in_dir, out_dir, k, gap, lam, label=0, mode="w"):
+    max_work = sum([len([i for i in types.iterdir()]) for types in in_dir.iterdir()])
+    to_do_map = [] 
+    with futures.ProcessPoolExecutor(max_work) as tpe:
+        for types in in_dir.iterdir():       
+            for size_dir in types.iterdir():
+                output = out_dir / types.name / (size_dir.stem + ".csv")
+                output.parent.mkdir(exist_ok=True)
+                raa_str = size_dir.name.split("-")[-1]
+                future = tpe.submit(extract_to_file, size_dir, output, k, gap,
+                                     lam, list(raa_str), label=label, mode=mode)
+                to_do_map.append(future)
         done_iter = futures.as_completed(to_do_map)
-        for f in done_iter:
-            idx = to_do_map[f]
-            print(f'{n}n --> {idx}', 'has done!')
 
-def dic2array(result_dic, key='acc', filter_num=0, cls=0):
+def roc_eval(x, y, model, out):
+    svc_disp = plot_roc_curve(model, x, y)
+    plt.savefig(out, dpi=1000, bbox_inches="tight")
+
+def dic2array(result_dic, key='acc', cls=0):
     acc_ls = []  # all type acc
-    filtered_type_acc = []
-    type_ls = [type_id for type_id in result_dic.keys()]
+    type_ls = [type_id for type_id in result_dic.keys() if type_id != "naa"]
     type_ls.sort(key=lambda x: int(x[4:]))
     all_score_array = np.zeros([len(type_ls), 19])
-
-    filtered_type_ls = type_ls.copy()
-    filtered_score_ls = []
-    sum_raa = sum([len(result_dic[ti].keys()) for ti in type_ls])
-    if sum_raa < 600:
-        filter_num = 0
     for idx, ti in enumerate(type_ls):
         type_ = result_dic[ti]
         score_size_ls = []
         for size in range(2, 21):
-            if str(size) in type_:
-                score = type_[str(size)][key][cls]
-            else:
-                score = 0
+            score = type_.get(str(size), {key: [0]})[key][cls]
             score_size_ls.append(score)
         all_score_array[idx] = score_size_ls
-        if len(type_) < filter_num:
-            filtered_type_ls.remove(ti)
-            continue
-        filtered_score_ls.append(score_size_ls)
-    filtered_score_array = np.array(filtered_score_ls)
-    all_score = (all_score_array, type_ls)
-    filtered_score = (filtered_score_array, filtered_type_ls)
-    return all_score, filtered_score
+    return all_score_array, type_ls
 
-def eval_plot(result_dic, n, out, fmt='tiff', filter_num = 8):
+def filter_type(score_metric, type_ls, filter_num=8):
+    filter_scores, filter_type = [], []
+    for type_score, type_id in zip(score_metric, type_ls):
+        scores = [i for i in type_score if i > 0]
+        if len(scores) >= 8:
+            filter_scores.append(type_score)
+            filter_type.append(type_id)
+    return np.array(filter_scores), filter_type
+   
+        
+def eval_plot(result_dic, out, fmt, filter_num=8):
     key = 'acc'
-    all_score, filter_score = dic2array(result_dic, key=key, filter_num=filter_num)
-    scores, types = all_score
-    f_scores, f_types = filter_score
-    f_heatmap_path = os.path.join(out, f'{key}_f{filter_num}-heatmap_{n}n.{fmt}')
-    heatmap_path = os.path.join(out, f'{key}_heatmap_{n}n.{fmt}')
-    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path)
-    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path)
+    scores, types = dic2array(result_dic, key=key)
+    f_scores, f_types = filter_type(scores, types, filter_num=filter_num)
+    
+    annot_size, tick_size, label_size = heatmap_font_size(scores.shape[1])
+    f_annot_size, f_tick_size, f_label_size = heatmap_font_size(f_scores.shape[1])
+    font_size = {"annot_size": annot_size, "tick_size": tick_size, "label_size": label_size}
+    f_font_size = {"annot_size": f_annot_size, "tick_size": f_tick_size, "label_size": f_label_size}
 
+    heatmap_path = out / f'{key}_heatmap.{fmt}'
+    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path, **font_size)
+    f_heatmap_path = out / f'f{filter_num}_{key}_heatmap.{fmt}'
+    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path, **f_font_size)
+    
     f_scores_arr = f_scores[f_scores > 0]
     size_arr = np.array([np.arange(2, 21)] * f_scores.shape[0])[f_scores > 0]
-    path = os.path.join(out, f'acc_size_density-{n}n.{fmt}')
+    acc_size_path = out / f'acc_size_density.{fmt}'
+    acc_path = out / f'acc_density.{fmt}'
     size_arr = size_arr.flatten()
-    draw.p_bivariate_density(size_arr, f_scores_arr, n, path)
+    draw.p_bivariate_density(size_arr, f_scores_arr, acc_size_path)
+    draw.p_univariate_density(f_scores_arr*100, acc_path)
 
     max_type_idx_arr, max_size_idx_arr = np.where(f_scores == f_scores.max())
     m_type_idx, m_size_idx = max_type_idx_arr[0], max_size_idx_arr[0]  # 默认第一个
-
-    cp_path = os.path.join(out, f'comparsion_{n}n.{fmt}')
+    cp_path = out / f'acc_comparsion.{fmt}'
     diff_size = f_scores[m_type_idx]
     same_size = f_scores[:, m_size_idx]
     types_label = [int(i[4:]) for i in f_types]
     draw.p_comparison_type(diff_size, same_size, types_label, cp_path)
-
-    fea_folder = f'{out}_{n}n'
-    type_id = f_types[m_type_idx]
-    file_name = f"{m_size_idx+2}_{n}n.csv"
-    max_acc_fea_file = os.path.join(fea_folder, type_id, file_name)
-    # com_result = cp.al_comparison(max_acc_fea_file)
-    # roc_path = os.path.join(out, f'{n}n_al_roc.{fmt}')
-    # draw.p_roc_al(param, roc_path)
-    return f_scores_arr, max_acc_fea_file
+    return f_scores_arr
 
 def parse_path(feature_folder, filter_format='csv'):
     """
@@ -255,22 +227,84 @@ def mkdirs(directory):
     except FileExistsError:
         pass
 
-def load_normal_data(file_data): ## file for data (x,y)
+def load_normal_data(file_data, label_exist=True): ## file for data (x,y)
+    if isinstance(file_data, (tuple, list)):
+        if all([isinstance(i, np.ndarray) for i in file_data]):
+            x, y = file_data
     if os.path.isfile(str(file_data)):
         data = np.genfromtxt(file_data, delimiter=',')
-        x, y = data[:, 1:], data[:, 0]
-    else:
-        x, y = file_data
+        if label_exist:
+            x, y = data[:, 1:], data[:, 0]
+        else:
+            x, y = data, None
     scaler = Normalizer()
     x = scaler.fit_transform(x)
     return x, y
 
-def data_to_hpo(file, hpod=.6):
-    hpo_x, hpo_y = load_normal_data(file)
-    if hpod < 1:
-        hpo_x, _, hpo_y, _ = train_test_split(
-        hpo_x, hpo_y, train_size=hpod, random_state=1, shuffle=True)
-    return hpo_x, hpo_y
+def load_model(model_path):
+    model = joblib.load(model_path)
+    return model
+
+def feature_mix(files):
+    data_ls = [np.genfromtxt(file, delimiter=',')[:, 1:] for file in files]
+    mix_data = np.hstack(data_ls)
+    y = np.genfromtxt(files[0], delimiter=',')[:, 0]
+    x = mix_data
+    return x, y
+
+def merge_feature_file(label, file):
+    if label is None:
+        data_ls = [np.genfromtxt(file, delimiter=',') for file in file]
+        mix_data = np.vstack(data_ls)
+    else:
+        data_ls = []
+        for idx, f in zip(label, file):
+            data = np.genfromtxt(f, delimiter=',')
+            data[:, 0] = idx
+            data_ls.append(data)
+        mix_data = np.vstack(data_ls)
+    return mix_data
+
+def write_array(data, file):
+    np.savetxt(file, data, delimiter=",", fmt="%.8f")
+    
+def split_data(file, test_size):
+    data = np.genfromtxt(file, delimiter=',')
+    data_train, data_test = train_test_split(data, test_size=test_size, random_state=1)
+    return data_train, data_test
+    
+def param_grid(c, g):
+    c_range = np.logspace(*c, base=2)
+    gamma_range = np.logspace(*g, base=2)
+    params = [{'kernel': ["rbf"], 'C': c_range,
+                    'gamma': gamma_range}]
+    return params
+
+def save_y(out, *y):
+    with open(out, "w") as f:
+        fc = csv.writer(f)
+        for line in zip(*y):
+            fc.writerow(line)
+    
+def save_json(metric_dic, path):
+    result_dic = {}
+    naa_metric = {}
+    for type_dir, metric_ls in metric_dic.items():
+        result_dic.setdefault(type_dir.name, {})
+        for size_dir, metrics in zip(type_dir.iterdir(), metric_ls):
+            acc, sn, sp, ppv, mcc = metrics
+            metric_dic = {'sn': sn.tolist(), 'sp': sp.tolist(), 'ppv': ppv.tolist(),
+                      'acc': acc.tolist(), 'mcc': mcc.tolist()}
+            if type_dir.name == "naa":
+                naa_metric = metric_dic
+            else:
+                size_ = size_dir.name.split("-")[0]
+                result_dic[type_dir.name][size_] = metric_dic
+    for type_key in result_dic:
+        result_dic[type_key]["20"] = naa_metric
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(result_dic, f, indent=4)
+
 
 TEXT = """
     敏感度(Sensitivity, SN)也称召回率(Recall, RE):	
@@ -285,10 +319,11 @@ TEXT = """
         MCC = (TP*TN- FP*FN)/sqrt((TP + FP)*(TN + FN)*(TP + FN)*(TN + FP)).其中sqrt代表开平方.
 """
               
-def print_report(metric, cm, report_file):
+def save_report(metric, cm, labels, report_file):
     accl, snl, spl, ppvl, mccl = metric
     with open(report_file, "w") as f:
-        tp, fn, fp, tn, sn, sp, acc, mcc, ppv = "tp", "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv"
+        tp, fn, fp, tn, sn, sp, acc, mcc, ppv = ("tp",
+           "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv")
         line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
         f.write(line0)
         for idx, line in enumerate(cm):
@@ -298,7 +333,10 @@ def print_report(metric, cm, report_file):
             f.write(linei)
         f.write("\n\n")
         f.write(TEXT)
-        
+        f.write("\n\n")
+        for l in zip(*labels):
+            f.write(",".join([str(i) for i in l]))
+            f.write("\n")
 
 def exist_file(*file_path):
     for file in file_path:
@@ -308,3 +346,34 @@ def exist_file(*file_path):
         else:
             print("file not found!")
             exit()
+
+def heatmap_font_size(types):
+    if types <= 10:
+        annot_size = 4
+        tick_size = 4
+        label_size = 5
+    elif types <= 20:
+        annot_size = 3
+        tick_size = 3
+        label_size = 4     
+    elif types <= 30:
+        annot_size = 2.5
+        tick_size = 2.5
+        label_size = 3.5 
+    elif types <= 40:
+        annot_size = 2.5
+        tick_size = 2.5
+        label_size = 3.5 
+    elif types <= 50:
+        annot_size = 1.5
+        tick_size = 2.5
+        label_size = 3.5 
+    elif types <= 60:
+        annot_size = 1.5
+        tick_size = 2.5
+        label_size = 3.5 
+    else:
+        annot_size = 1
+        tick_size = 2
+        label_size = 3 
+    return annot_size, tick_size, label_size

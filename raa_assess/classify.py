@@ -37,7 +37,7 @@ class Evaluate:
             y_pre_arr[test_idx] = y_pre
         metric = self.metrics_(y, y_pre_arr)
         cm = multilabel_confusion_matrix(y, y_pre_arr)
-        return metric, cm
+        return metric, cm, (y, y_pre_arr)
     
     def kfold(self, k):
         skf = StratifiedKFold(n_splits=k, random_state=1)
@@ -53,16 +53,16 @@ class Evaluate:
             metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
             all_metrics = np.add(all_metrics, metric)
         k_mean_metric = all_metrics / k
-        return k_mean_metric, ""
+        return k_mean_metric, None, None 
 
     def holdout(self, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, shuffle=True,
+        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y,
                                                 random_state=1, test_size=test_size)
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
         metric = self.metrics_(y_true, y_pre)
         cm = multilabel_confusion_matrix(y_true, y_pre)
-        return metric, cm
+        return metric, cm, (y_true, y_pre)
 
     def metrics_(self, y_true, y_pre):
         le = LabelEncoder()
@@ -85,56 +85,23 @@ class Evaluate:
         return acc, sn, sp, ppv, mcc
         
 
+def svm(C, gamma):
+    model = SVC(class_weight='balanced', probability=True,
+                 C=C, gamma=gamma, random_state=1)
+
 class SvmClassifier:
 
-    def __init__(self, param_grid=None, kernel='rbf', C=1, gamma=0.1, cv=5,
-                 grid_search=True, ):
-        self.cv = cv
-        self.param_grid = param_grid if param_grid else {}
-        self.is_grid_search = grid_search
-        self.clf = SVC(class_weight='balanced', probability=True,)  # cache_size=500
-        if self.is_grid_search:
-            self._check_param_grid(self.param_grid)
-        else:
-            self.C = C
-            self.gamma = gamma
-            self.kernel = kernel
+    def __init__(self, kernel='rbf', C=1, gamma=0.1, cv=5):
+        self.C = C
+        self.gamma = gamma
+        self.kernel = kernel
+        self.clf = SVC(class_weight='balanced', probability=True,
+                        C=1.0, kernel='rbf', gamma='scale',)  # cache_size=500
 
     def train(self, x_train, y_train):
-        if self.is_grid_search:
-            svm = self.grid_search(x_train, y_train)
-        else:
-            svm = self.clf.set_params(C=self.C, gamma=self.gamma)
+        svm = self.clf.set_params(C=self.C, gamma=self.gamma)
+        svm = self.clf.fit(x_train, y_train)
         return svm
-
-    def grid_search(self, x_train, y_train):
-        pipe = Pipeline([
-            ('classify', self.clf)
-        ])
-        grid = GridSearchCV(pipe, cv=5, n_jobs=-1, param_grid=self.param_grid, iid=True)
-        clf = grid.fit(x_train, y_train)
-        C, gamma = clf.best_params_['classify__C'], clf.best_params_['classify__gamma'],
-        self.best_score = clf.best_score_
-        return clf.best_estimator_
-
-    def _check_param_grid(self, param_grid):
-        kernel = param_grid.get('kernel', 'rbf')
-        C_start = param_grid.get('C_start', None)
-        C_end = param_grid.get('C_end', None)
-        g_start = param_grid.get('g_start', None)
-        g_end = param_grid.get('g_end', None)
-        param_ls = [C_start, C_end, g_start, g_end]
-        if all([1 if i is not None else 0 for i in param_ls]):
-            C_range = np.logspace(C_start, C_end, C_end - C_start + 1, base=2)
-            gamma_range = np.logspace(g_start, g_end, g_end - g_end + 1, base=2)
-            self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
-        else:
-            print('grid search...')
-            C_range = np.logspace(-4, 9, 10, base=2)  # 10
-            gamma_range = np.logspace(-8, 3, 8, base=2)  # 5
-            # self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
-            self.param_grid = [{'classify__kernel': [kernel], 'classify__C': C_range, 'classify__gamma': gamma_range}]
-
 
 class KnnClassifier:
 

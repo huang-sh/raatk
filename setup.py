@@ -11,13 +11,13 @@ setup(name='raa_assess',
     install_requires=[
         'numpy>=1.16.2',
         'matplotlib>=3.0.3',
-        'scikit-learn>=0.21.2',
+        'scikit-learn>=0.22.1',
         'seaborn>=0.9.0',
         
         ],
     entry_points={
         'console_scripts': [
-        'raa=raa_assess.__main__:command_parser',
+        'raatk=raa_assess.__main__:command_parser',
             ]
         },
     python_requires=">=3.5",
