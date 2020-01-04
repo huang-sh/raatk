@@ -147,7 +147,7 @@ def batch_extract(in_dir, out_dir, k, gap, lam, label=0, mode="w", n_jobs=1):
         return size_dir, output, list(raa_str)
 
     extract_fun = partial(extract_to_file, k=k, gap=gap, 
-                          lam=lam, label=label, mode=mode, n_jobs=1)
+                          lam=lam, label=label, mode=mode)
     with Parallel(n_jobs=n_jobs) as pl:
         for types in in_dir.iterdir():
             type_dir = out_dir / types.name
