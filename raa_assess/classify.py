@@ -40,7 +40,7 @@ class Evaluate:
         return metric, cm, (y, y_pre_arr)
     
     def kfold(self, k):
-        skf = StratifiedKFold(n_splits=k, random_state=1)
+        skf = StratifiedKFold(n_splits=k,)
         ss = skf.split(self.x, self.y)
         clf = self.model
         all_metrics = 0
@@ -49,15 +49,14 @@ class Evaluate:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
-            y_true, y_pre = y_test, fit_clf.predict(x_test)
+            y_true, y_pre = y_test, fit_clf.redict(x_test)
             metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
             all_metrics = np.add(all_metrics, metric)
         k_mean_metric = all_metrics / k
         return k_mean_metric, None, None 
 
     def holdout(self, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y,
-                                                random_state=1, test_size=test_size)
+        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=test_size)
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
         metric = self.metrics_(y_true, y_pre)
