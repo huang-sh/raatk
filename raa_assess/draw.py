@@ -1,33 +1,14 @@
-import os
-import glob
-import json
-import time
-import math
+# -*- coding: utf-8 -*-
+
+"""
+draw.py
+~~~~~~~~~~~~
+"""
 
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import BoundaryNorm
-from matplotlib.colors import LinearSegmentedColormap
-from matplotlib import colorbar
 from matplotlib.ticker import MaxNLocator
-
-from sklearn.metrics import roc_curve, roc_auc_score
-
-def p_roc(y_test, y_pro, out):
-    plt.figure()
-    plt.plot([0, 1], [0, 1], 'k--')
-    for v in y_pro:
-        fp, tp, _ = roc_curve(y_test, y_pro[v])
-        auc = roc_auc_score(y_test, y_pro[v])
-        plt.plot(fp, tp, label=f'{v} (AUC = {auc:.2f})')
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title('ROC curve')
-    plt.legend(loc='best')
-    # plt.show()
-    plt.savefig(f'{out}_plot/roc_comparison.svg', dpi=1000, bbox_inches="tight")
 
 def p_univariate_density(acc, out):
     fig, ax = plt.subplots()
@@ -89,23 +70,12 @@ def p_acc_heat(data, vmin, vmax, xticklabels, out, **kwargs):
                       xticklabels=True)
     ax.set_ylim([0, 19])
     ax.set_xlim([0, len(xticklabels)])
-    # ax.set_xticks(range(1, len(xticklabels)+1))
     ax.set_xticklabels(xticklabels, fontsize=tick_size, rotation=45, ha="center",va="center")
     ax.set_yticklabels(range(2,21), fontsize=tick_size)
     ax.set_xlabel('Type', fontsize=label_size)
     ax.set_ylabel('Cluster Size', fontsize=label_size)
     plt.savefig(out, dpi=600, bbox_inches="tight")
     plt.close()
-
-def p_roc_al(param, out):
-    plt.figure()
-    plt.plot([0, 1], [0, 1], 'k--')
-    for clf, metrics in param.items():
-        plt.plot(metrics[0], metrics[1], label=f'{clf} (AUC = {metrics[-1]:.2f})')
-    plt.xlabel('False positive rate')
-    plt.ylabel('True positive rate')
-    plt.title('ROC curve')
-    plt.savefig(out, dpi=600)
 
 def p_fs(x_trick, y_trick, out, **kwargs):
     ax = plt.figure().gca()
