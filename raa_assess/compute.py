@@ -25,13 +25,13 @@ np.seterr(all='ignore')
 
 
 def grid_search(x, y, param_grid):
-    grid = GridSearchCV(SVC(random_state=1), cv=5, n_jobs=-1, param_grid=param_grid, iid=True)
+    grid = GridSearchCV(SVC(random_state=1), cv=5, n_jobs=-1, param_grid=param_grid)
     clf = grid.fit(x, y)
     C, gamma = clf.best_params_['C'], clf.best_params_['gamma']
     return C, gamma
     
 def train(x, y, C, gamma):
-    svc = SVC(class_weight='balanced', probability=True, C=C, gamma=gamma)
+    svc = SVC(class_weight='balanced', probability=True, C=C, gamma=gamma, random_state=1)
     model = svc.fit(x, y)
     return model
 
@@ -97,7 +97,6 @@ def batch_evaluate(in_dir, out_dir, C, gamma, cv, n_job):
                 type_dir.mkdir(exist_ok=True)
                 save_pa(delayed(save_)(m, type_dir/ f.stem) for m,f in zip(metrics_iter, type_.iterdir()))
     return metric_dic
-
 
 def feature_select(x, y, C, gamma, step, cv, n_jobs):
     selector = VarianceThreshold()

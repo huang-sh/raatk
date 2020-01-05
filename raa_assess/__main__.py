@@ -92,7 +92,7 @@ def sub_extract(args):
                     raa = list(feature_file.name.split('-')[-1])
                 else:
                     raa = list(args.raa)
-                ul.extract_to_file(feature_file, out, k, gap, lam, raa,
+                ul.extract_to_file(feature_file, out, raa,k, gap, lam, 
                                    label=idx, mode="a+")
         else:
             for idx, (file, out) in enumerate(zip(args.file, args.output)):
@@ -102,7 +102,7 @@ def sub_extract(args):
                 else:
                     raa = list(args.raa)
                 label = idx if args.label_f else None
-                ul.extract_to_file(feature_file, Path(out), k, gap, lam, raa, label=label, mode="w")
+                ul.extract_to_file(feature_file, Path(out), raa, k, gap, lam, label=label, mode="w")
 
 def sub_hpo(args):
     params = ul.param_grid(args.C, args.gamma)
@@ -187,8 +187,8 @@ def sub_split(args):
     ts = args.testsize
     if 0 < ts < 1:
         data_train, data_test = ul.split_data(args.file, ts)
-        ul.write_array(data_train, f"{args.output}_{1-ts}")
-        ul.write_array(data_test, f"{args.output}_{ts}")
+        ul.write_array(data_train, f"{1-ts}_{args.output}")
+        ul.write_array(data_test, f"{ts}_{args.output}")
     else:
         print("error")
 
@@ -264,7 +264,7 @@ def command_parser():
     parser_ev.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
     parser_ev.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
     parser_ev.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='process number')
+                                 default=int(os.cpu_count()/2), help='cpu numbers')
     parser_ev.set_defaults(func=sub_eval)
     
     parser_roc = subparsers.add_parser('roc', help='model roc evaluation')

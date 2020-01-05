@@ -125,8 +125,8 @@ def batch_reduce(file, cluster_info, out_dir):
             type_id, size, cluster = to_do_map[i]
             print("done %s %s %s" % (type_id, size, cluster)) 
 
-def extract_to_file(feature_file, output, k, gap, lam, raa, label=0, mode="w"):
-    with open(feature_file, "r") as rh, open(output, mode) as wh:
+def extract_to_file(feature_file, output, raa, k, gap, lam, label=0, mode="w"):
+    with open(feature_file, "r") as rh, open(output, mode, newline="\n") as wh:
         h = csv.writer(wh)
         seqs = read_fasta(rh)
         for seq in seqs:
@@ -285,7 +285,7 @@ def param_grid(c, g):
     return params
 
 def save_y(out, *y):
-    with open(out, "w") as f:
+    with open(out, "w", newline="\n") as f:
         fc = csv.writer(f)
         for line in zip(*y):
             fc.writerow(line)
