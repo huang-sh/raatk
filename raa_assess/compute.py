@@ -61,7 +61,7 @@ def predict(x, model):
     return y_pred
 
 def evaluate(x, y, C, gamma, cv):
-    clf = svc = SVC(class_weight='balanced', probability=True,
+    clf = SVC(class_weight='balanced', probability=True,
                      C=C, gamma=gamma, random_state=1)
     evalor = al.Evaluate(clf, x, y)
     k = int(cv)

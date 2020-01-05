@@ -235,12 +235,14 @@ def load_normal_data(file_data, label_exist=True): ## file for data (x,y)
     if isinstance(file_data, (tuple, list)):
         if all([isinstance(i, np.ndarray) for i in file_data]):
             x, y = file_data
-    if os.path.isfile(str(file_data)):
+    elif os.path.isfile(str(file_data)):
         data = np.genfromtxt(file_data, delimiter=',')
         if label_exist:
             x, y = data[:, 1:], data[:, 0]
         else:
             x, y = data, None
+    else:
+        raise FileNotFoundError(file_data) # raise error
     scaler = Normalizer()
     x = scaler.fit_transform(x)
     return x, y
@@ -274,7 +276,7 @@ def write_array(data, file):
     
 def split_data(file, test_size):
     data = np.genfromtxt(file, delimiter=',')
-    data_train, data_test = train_test_split(data, test_size=test_size, random_state=1)
+    data_train, data_test = train_test_split(data, test_size=test_size)
     return data_train, data_test
     
 def param_grid(c, g):
@@ -325,7 +327,7 @@ TEXT = """
               
 def save_report(metric, cm, labels, report_file):
     accl, snl, spl, ppvl, mccl = metric
-    with open(report_file, "w") as f:
+    with open(report_file, "w", encoding="utf-8") as f:
         tp, fn, fp, tn, sn, sp, acc, mcc, ppv = ("tp",
            "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv")
         line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"

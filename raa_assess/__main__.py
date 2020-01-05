@@ -148,7 +148,6 @@ def sub_roc(args):
 
 def sub_ifs(args):
     ul.exist_file(*args.file)
-    x, y = ul.load_normal_data(args.file)
     C, gamma, step, cv, n_jobs = args.C, args.gamma, args.step, args.cv, args.process
     if args.mix:
         x, y = ul.feature_mix(args.file)
@@ -159,7 +158,7 @@ def sub_ifs(args):
         acc_ls = [0] + [i[0][0][0] for i in result_ls]
         ul.save_y(args.output, x_tricks, acc_ls)
         max_acc = max(acc_ls)
-        best_n = acc_ls.index(max_acc) * step + step -1
+        best_n = acc_ls.index(max_acc) * step
         draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
     else:
         for file, out in zip(args.file, args.output): 
@@ -170,7 +169,7 @@ def sub_ifs(args):
             acc_ls = [0] + [i[0][0][0] for i in result_ls]
             ul.save_y(out, x_tricks, acc_ls)
             max_acc = max(acc_ls)
-            best_n = acc_ls.index(max_acc) * step + step -1
+            best_n = acc_ls.index(max_acc) * step
             draw.p_fs(x_tricks, acc_ls, out+'.png', max_acc=max_acc, best_n=best_n)
 
 def sub_plot(args):
