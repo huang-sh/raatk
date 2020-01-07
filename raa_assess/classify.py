@@ -49,7 +49,7 @@ class Evaluate:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
-            y_true, y_pre = y_test, fit_clf.redict(x_test)
+            y_true, y_pre = y_test, fit_clf.predict(x_test)
             metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
             all_metrics = np.add(all_metrics, metric)
         k_mean_metric = all_metrics / k
