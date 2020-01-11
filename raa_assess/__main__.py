@@ -164,7 +164,7 @@ def sub_ifs(args):
         for file, out in zip(args.file, args.output): 
             noraml_x, noraml_y = ul.load_normal_data(file)
             result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
-            x_tricks = [0] + [i for i in range(0, noraml_x.shape[1], args.step)][1:]
+            x_tricks = [i for i in range(0, len(result_ls), args.step)]
             x_tricks.append(noraml_x.shape[1])
             acc_ls = [0] + [i[0][0][0] for i in result_ls]
             ul.save_y(out, x_tricks, acc_ls)
