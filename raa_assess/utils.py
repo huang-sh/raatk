@@ -276,7 +276,7 @@ def write_array(data, file):
     
 def split_data(file, test_size):
     data = np.genfromtxt(file, delimiter=',')
-    data_train, data_test = train_test_split(data, test_size=test_size)
+    data_train, data_test = train_test_split(data, test_size=test_size, random_state=1)
     return data_train, data_test
     
 def param_grid(c, g):
