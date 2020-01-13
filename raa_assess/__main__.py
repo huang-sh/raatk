@@ -231,13 +231,13 @@ def command_parser():
     parser_ex.add_argument('--label-f', action='store_false', help='feature label')
     parser_ex.set_defaults(func=sub_extract)
 
-    parser_ex = subparsers.add_parser('hpo', help='hpyper-parameter optimization')
-    parser_ex.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser_ex.add_argument('-c', '--C',  nargs='+', required=True, type=float,
+    parser_hpo = subparsers.add_parser('hpo', help='hpyper-parameter optimization')
+    parser_hpo.add_argument('file', help='feature file for hpyper-parameter optimization')
+    parser_hpo.add_argument('-c', '--C',  nargs='+', required=True, type=float,
                             help='regularization parameter value range [start, stop, [num]]')
-    parser_ex.add_argument('-g', '--gamma', nargs='+', required=True, type=float,
+    parser_hpo.add_argument('-g', '--gamma', nargs='+', required=True, type=float,
                             help='Kernel coefficient value range [start, stop, [num]]')
-    parser_ex.set_defaults(func=sub_hpo)
+    parser_hpo.set_defaults(func=sub_hpo)
     
     parser_t = subparsers.add_parser('train', help='train model')
     parser_t.add_argument('file', help='feature file to train')
