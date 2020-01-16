@@ -56,7 +56,7 @@ def sub_reduce(args):
             ul.batch_reduce(file, cluster_info, out)
             if args.naa:
                 naa_dir = out / "naa"
-                naa_dir.mkdir()
+                naa_dir.mkdir(exist_ok=True)
                 import shutil
                 shutil.copyfile(file, naa_dir / "20-ACDEFGHIKLMNPQRSTVWY")
                 
