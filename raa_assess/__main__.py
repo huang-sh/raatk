@@ -47,9 +47,13 @@ def sub_reduce(args):
             if "-" in type_[0]:
                 ss = type_[0].split("-")
                 types = [str(i) for i in range(int(ss[0]), int(ss[1])+1)]
+            else:
+                types = map(type_, str)
             if "-" in size[0]:
                 ss = size[0].split("-")
                 sizes = [str(i) for i in range(int(ss[0]), int(ss[1])+1)]
+            else:
+                sizes = map(size, str)
             cluster_info = ul.reduce_query(",".join(types), ",".join(sizes))
             out = Path(out)
             out.mkdir(exist_ok=True)
