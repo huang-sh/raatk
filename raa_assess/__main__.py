@@ -147,6 +147,7 @@ def sub_eval(args):
 
 def sub_roc(args):
     model = ul.load_model(args.model)
+    model.set_params(probability=True)
     x, y = ul.load_normal_data(args.file)
     ul.roc_eval(x, y, model, args.output)
 
