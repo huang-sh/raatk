@@ -31,7 +31,7 @@ def grid_search(x, y, param_grid):
     return C, gamma
     
 def train(x, y, C, gamma):
-    svc = SVC(class_weight='balanced', probability=True, C=C, gamma=gamma, random_state=1)
+    svc = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1)
     model = svc.fit(x, y)
     return model
 
@@ -61,8 +61,7 @@ def predict(x, model):
     return y_pred
 
 def evaluate(x, y, C, gamma, cv):
-    clf = SVC(class_weight='balanced', probability=True,
-                     C=C, gamma=gamma, random_state=1)
+    clf = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1)
     evalor = al.Evaluate(clf, x, y)
     k = int(cv)
     if k == -1:
