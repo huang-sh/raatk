@@ -206,7 +206,7 @@ def command_parser():
 
     parser_v = subparsers.add_parser('view', help='view the reduce amino acids scheme')
     parser_v.add_argument('-t', '--type', nargs='+', type=int, required=True, 
-                          choices=list([i for i in range(1, 74)]),help='type id')
+                          choices=list([i for i in range(1, 75)]),help='type id')
     parser_v.add_argument('-s', '--size', nargs='+', type=int, required=True, 
                           choices=list([i for i in range(2, 20)]), help='reduce size')
     parser_v.set_defaults(func=sub_view)
