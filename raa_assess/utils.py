@@ -330,9 +330,9 @@ def save_report(metric, cm, labels, report_file):
     with open(report_file, "w", encoding="utf-8") as f:
         tp, fn, fp, tn, sn, sp, acc, mcc, ppv = ("tp",
            "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv")
-        line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
-        f.write(line0)
         if cm is not None:
+            line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
+            f.write(line0)           
             for idx, line in enumerate(cm):
                 (tn, fp), (fn, tp) = line
                 acc, sn, sp, ppv, mcc = accl[idx]*100, snl[idx]*100, spl[idx]*100, ppvl[idx]*100, mccl[idx]*100
@@ -345,6 +345,16 @@ def save_report(metric, cm, labels, report_file):
             for l in zip(*labels):
                 f.write(",".join([str(i) for i in l]))
                 f.write("\n")
+        else:
+            acc, sn, sp, ppv, mcc = metric
+            line0 = f"   {'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
+            f.write(line0)
+            for i in range(len(acc)):
+                line = f"{i:<3}{sn[i]:<7.2f}{sp[i]:<7.2f}{ppv[i]:<7.2f}{acc[i]:<7.2f}{mcc[i]:<7.2f}\n"
+                f.write(line)   
+            f.write("\n\n")
+            f.write(TEXT)
+            f.write("\n\n")
 
 def exist_file(*file_path):
     for file in file_path:
