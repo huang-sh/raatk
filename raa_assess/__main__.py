@@ -141,7 +141,7 @@ def sub_eval(args):
         ul.save_json(all_sub_metric_dic, result_json)
     else:
         x, y = ul.load_normal_data(args.file)
-        metric_dic = cp.evaluate(x, y, cv, c, g)
+        metric_dic = cp.evaluate(x, y, cv, c, g, probability=True)
         ul.save_report(metric_dic, args.output + '.txt')
         ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_pre'], args.output + '.png')       
 
