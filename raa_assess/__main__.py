@@ -143,7 +143,7 @@ def sub_eval(args):
         x, y = ul.load_normal_data(args.file)
         metric_dic = cp.evaluate(x, y, cv, c, g, probability=True)
         ul.save_report(metric_dic, args.output + '.txt')
-        ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_pre'], args.output + '.png')       
+        ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
 
 def sub_roc(args):
     model = ul.load_model(args.model)
