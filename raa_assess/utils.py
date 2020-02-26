@@ -12,7 +12,7 @@ from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
-from sklearn.metrics import plot_roc_curve
+from sklearn.metrics import roc_curve, RocCurveDisplay, auc
 
 try:
     from . import draw
@@ -299,9 +299,8 @@ def save_json(metric_dic, path):
     for type_dir, metric_ls in metric_dic.items():
         result_dic.setdefault(type_dir.name, {})
         for size_dir, metrics in zip(type_dir.iterdir(), metric_ls):
-            acc, sn, sp, ppv, mcc = metrics
-            metric_dic = {'sn': sn.tolist(), 'sp': sp.tolist(), 'ppv': ppv.tolist(),
-                      'acc': acc.tolist(), 'mcc': mcc.tolist()}
+            acc, sn, sp, ppv, mcc = [i.tolist() for i in np.mean(metrics, axis=0)]
+            metric_dic = {'sn': sn, 'sp': sp, 'ppv': ppv, 'acc': acc, 'mcc': mcc}
             if type_dir.name == "naa":
                 naa_metric = metric_dic
             else:
@@ -311,6 +310,7 @@ def save_json(metric_dic, path):
         result_dic[type_key]["20"] = naa_metric
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f, indent=4)
+
 
 
 TEXT = """
@@ -326,36 +326,74 @@ TEXT = """
         MCC = (TP*TN- FP*FN)/sqrt((TP + FP)*(TN + FN)*(TP + FN)*(TN + FP)).其中sqrt代表开平方.
 """
               
-def save_report(metric, cm, labels, report_file):
-    accl, snl, spl, ppvl, mccl = metric
+def save_report(metric_dic, report_file):
+    y_true = metric_dic['y_true']
+    y_pre = metric_dic['y_pre']
+    cm = metric_dic['cm']
+    sub_metric = metric_dic['sub_metric']
     with open(report_file, "w", encoding="utf-8") as f:
-        tp, fn, fp, tn, sn, sp, acc, mcc, ppv = ("tp",
-           "fn", "fp", "tn", "sn", "sp", "acc", "mcc", "ppv")
-        if cm is not None:
-            line0 = f"   {tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7}{sp:<7}{ppv:<7}{acc:<7}{mcc:<7}\n"
-            f.write(line0)           
-            for idx, line in enumerate(cm):
+        for cm_idx, sub_cm in enumerate(cm):       
+            kfi = f"{cm_idx}\n"
+            f.write(kfi)
+            col = f"     {'tp':<4}{'fn':<4}{'fp':<4}{'tn':<4}{'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
+            f.write(col)
+            for pos_idx, line in enumerate(sub_cm):
                 (tn, fp), (fn, tp) = line
-                acc, sn, sp, ppv, mcc = accl[idx]*100, snl[idx]*100, spl[idx]*100, ppvl[idx]*100, mccl[idx]*100
-                linei = f"{idx:<3}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
-                f.write(linei)
+                accl, snl, spl, ppvl, mccl = sub_metric[cm_idx]
+                acc, sn, sp, ppv, mcc = accl[pos_idx]*100, snl[pos_idx]*100, spl[pos_idx]*100, ppvl[pos_idx]*100, mccl[pos_idx]*100
+                linei = f"{pos_idx:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
+                f.write(linei)  
             f.write("\n\n")
-            f.write(TEXT)
-            f.write("\n\n")
-        if labels is not None:
-            for l in zip(*labels):
-                f.write(",".join([str(i) for i in l]))
+        f.write(TEXT)
+        f.write("\n\n")
+        for fold_idx, y_labels in enumerate(zip(y_true, y_pre)):
+            kfi = f"{fold_idx}\n"
+            f.write(kfi)
+            for label in zip(*y_labels):
+                f.write(",".join(map(str, label)))
                 f.write("\n")
+            f.write("\n\n")
+
+def k_roc_curve_plot(y_true, y_prob, out):
+    fig, ax = plt.subplots()
+    k_fold = len(y_true)
+    num = sum(map(len, y_true))
+    mean_fpr = np.linspace(0, 1, num)
+    tprs = []
+    aucs = []
+    for idx, (yt, yp) in enumerate(zip(y_true, y_prob)):
+        fpr, tpr, _ = roc_curve(yt, yp)
+        roc_auc = auc(fpr, tpr)
+        viz = RocCurveDisplay(fpr, tpr, roc_auc, 'SVM')
+        if k_fold == 1:
+            name = 'ROC'
         else:
-            acc, sn, sp, ppv, mcc = metric
-            line0 = f"   {'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
-            f.write(line0)
-            for i in range(len(acc)):
-                line = f"{i:<3}{sn[i]:<7.2f}{sp[i]:<7.2f}{ppv[i]:<7.2f}{acc[i]:<7.2f}{mcc[i]:<7.2f}\n"
-                f.write(line)   
-            f.write("\n\n")
-            f.write(TEXT)
-            f.write("\n\n")
+            name = f'ROC fold {idx}'
+            interp_tpr = np.interp(mean_fpr, fpr, tpr)
+            tprs.append(interp_tpr)
+            aucs.append(roc_auc)            
+        viz.plot(ax=ax, name=name, alpha=0.3, lw=1)
+    ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+        label='Chance', alpha=.8)
+    if k_fold > 1:
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(mean_fpr, mean_tpr, color='b',
+                label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+                lw=2, alpha=.8)
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+                        label=r'$\pm$ 1 std. dev.')
+
+        ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
+               title="Receiver operating characteristic example")
+        ax.legend(loc="lower right")
+    plt.savefig(out)
 
 def exist_file(*file_path):
     for file in file_path:
