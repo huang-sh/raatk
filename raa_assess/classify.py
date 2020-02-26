@@ -18,50 +18,73 @@ from sklearn.pipeline import Pipeline
 
 
 class Evaluate:
-    def __init__(self, model, x, y):
+    def __init__(self, model, x, y, probability=False):
+        self.probability = probability
         self.model = model
         self.x = x
         self.y = y
-
+        
     def loo(self):
         lo = LeaveOneOut()
         clf = self.model
         X, y = self.x, self.y        
         ss = lo.split(X)
         y_pre_arr = np.zeros(len(y))
+        y_prob_arr = np.zeros(len(y))
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
             y_pre_arr[test_idx] = y_pre
-        metric = self.metrics_(y, y_pre_arr)
-        cm = multilabel_confusion_matrix(y, y_pre_arr)
-        return metric, cm, (y, y_pre_arr)
+            if self.probability:
+                y_prob_arr[test_idx] = clf.predict_proba(x_test)[:,1]
+        self.sub_metric = [self.metrics_(y, y_pre_arr)]
+        self.cm = [multilabel_confusion_matrix(y, y_pre_arr)]
+        self.cv_eval = None
+        self.y_true = [y]
+        self.y_pre = [y_pre_arr]
+        self.y_prob = [y_prob_arr]
     
     def kfold(self, k):
         skf = StratifiedKFold(n_splits=k,)
         ss = skf.split(self.x, self.y)
         clf = self.model
-        all_metrics = 0
         X, y = self.x, self.y
+        metric_ls = []
+        cm = []
+        y_true_ls = []
+        y_pre_ls = []
+        y_prob_ls = []
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
-            metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
-            all_metrics = np.add(all_metrics, metric)
-        k_mean_metric = all_metrics / k
-        return k_mean_metric, None, None 
+            sub_cm = multilabel_confusion_matrix(y_true, y_pre)
+            cm.append(sub_cm)
+            y_true_ls.append(y_true)
+            y_pre_ls.append(y_pre)
+            sub_metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
+            metric_ls.append(sub_metric)
+            if self.probability:
+                y_prob = fit_clf.predict_proba(x_test)[:, 1]
+                y_prob_ls.append(y_prob)
+             ## self.cm=[]; self.cm.append(sub_cm)为啥不行？？？ 
+        # self.metric = np.mean(metric_ls, axis=0)
+        self.cm = cm
+        self.sub_metric = metric_ls
+        self.y_true = y_true_ls
+        self.y_pre = y_pre_ls
+        self.y_prob = y_prob_ls
 
     def holdout(self, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=test_size, random_state=1)
+        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=test_size)
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
-        metric = self.metrics_(y_true, y_pre)
-        cm = multilabel_confusion_matrix(y_true, y_pre)
-        return metric, cm, (y_true, y_pre)
+        self.sub_metric = [self.metrics_(y_true, y_pre)]
+        self.cm = [multilabel_confusion_matrix(y_true, y_pre)]
+        # self.fpr_tpr_auc_cm(y, y_pre)
 
     def metrics_(self, y_true, y_pre):
         le = LabelEncoder()
@@ -82,11 +105,24 @@ class Evaluate:
         acc = (tp + tn) / (tp + tn + fp + fn)
         mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
         return acc, sn, sp, ppv, mcc
-        
 
-def svm(C, gamma):
-    model = SVC(class_weight='balanced', probability=True,
-                 C=C, gamma=gamma, random_state=1)
+    def get_eval_idx(self):
+        # acc, sn, sp, ppv, mcc = self.metric    #  "acc": acc, "sn": sn, "sp": sp, "ppv": ppv, "mcc": mcc, 
+        metric_dic = {'y_true': self.y_true, "y_pre": self.y_pre, 'y_prob': self.y_prob,
+                     "cm":self.cm, "sub_metric": self.sub_metric}
+        return metric_dic
+
+    def fpr_tpr_auc_cm(self, y, y_pre):
+        self.fpr, self.tpr, self.auc, self.cm = [], [], [], []
+        self.y, self.y_pre = [], []
+        fpr, tpr, _ = roc_curve(y, y_pre)
+        self.fpr.append(fpr)
+        self.tpr.append(tpr)
+        self.auc.append(auc(fpr, tpr))
+        cm = multilabel_confusion_matrix(y, y_pre)
+        self.cm.append(cm)
+        self.y.append(y)
+        self.y_pre.append(y_pre)
 
 class SvmClassifier:
 
