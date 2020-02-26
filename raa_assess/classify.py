@@ -15,6 +15,7 @@ from sklearn.preprocessing import Normalizer, LabelEncoder
 from sklearn.metrics import multilabel_confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import auc, roc_curve
 
 
 class Evaluate:
