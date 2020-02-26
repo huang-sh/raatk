@@ -60,42 +60,38 @@ def predict(x, model):
     y_pred = clf.predict(x)
     return y_pred
 
-def evaluate(x, y, C, gamma, cv):
-    clf = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1)
-    evalor = al.Evaluate(clf, x, y)
+# TODO 分离clf？
+def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
+    if clf is None:
+        clf = SVC(class_weight='balanced', C=C, gamma=gamma,
+                 random_state=1, probability=probability)
+    evalor = al.Evaluate(clf, x, y, probability=probability)
     k = int(cv)
     if k == -1:
-        metrics = evalor.loo() 
+        evalor.loo() 
+        metric_dic = evalor.get_eval_idx()
     elif int(k) > 1:
-        metrics = evalor.kfold(k)
+        evalor.kfold(k)
+        metric_dic = evalor.get_eval_idx()
     else:
-        metrics = evalor.holdout(k)
-    return metrics  ## metric, cm, label
+        evalor.holdout(k)
+        metric_dic = evalor.get_eval_idx()
+    return metric_dic 
 
-def batch_evaluate(in_dir, out_dir, C, gamma, cv, n_job):
+def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
     
     def eval_(file, C, gamma, cv):
         x, y = ul.load_normal_data(file)
-        metrics = evaluate(x, y, C, gamma, cv)
-        return metrics
-    
-    def save_(metrics, file):  
-        metric, cm, labels = metrics
-        save_report = ul.save_report(metric, cm, labels, file)
+        metric_dic = evaluate(x, y, cv, C=C, gamma=gamma)
+        return metric_dic['sub_metric']
         
-    eval_func = partial(eval_, C=C, gamma=gamma, cv=cv)
-    metric_dic = {}
-    with Parallel(n_jobs=n_job) as eval_pa, Parallel(n_jobs=int(n_job/2),
-                                                       backend='threading') as save_pa:
+    eval_func = partial(eval_, cv=cv, C=C, gamma=gamma)
+    all_metric_dic = {}
+    with Parallel(n_jobs=n_job) as eval_pa:
         for type_ in in_dir.iterdir():
             metrics_iter = eval_pa(delayed(eval_func)(file) for file in type_.iterdir())
-            metric_dic[type_] = [i[0] for i in metrics_iter]
-            if cv == -1:
-                type_name = type_.name
-                type_dir = out_dir / type_name
-                type_dir.mkdir(exist_ok=True)
-                save_pa(delayed(save_)(m, type_dir/ f.stem) for m,f in zip(metrics_iter, type_.iterdir()))
-    return metric_dic
+            all_metric_dic[type_] = [i for i in metrics_iter]
+    return all_metric_dic
 
 def feature_select(x, y, C, gamma, step, cv, n_jobs):
     selector = VarianceThreshold()
