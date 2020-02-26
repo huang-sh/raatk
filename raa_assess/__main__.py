@@ -136,14 +136,14 @@ def sub_eval(args):
     c, g, cv = args.C, args.gamma, args.cv
     if args.directory:
         out = Path(args.output)
-        out.mkdir(exist_ok=True)
-        metric_dic = cp.batch_evaluate(Path(args.file), out, c, g, cv, args.process)
+        all_sub_metric_dic = cp.batch_evaluate(Path(args.file), out, cv, c, g, args.process)
         result_json = args.output + ".json"
-        ul.save_json(metric_dic, result_json)
+        ul.save_json(all_sub_metric_dic, result_json)
     else:
         x, y = ul.load_normal_data(args.file)
-        metric, cm, labels = cp.evaluate(x, y, c, g, cv)
-        ul.save_report(metric, cm, labels, args.output)        
+        metric_dic = cp.evaluate(x, y, cv, c, g)
+        ul.save_report(metric_dic, args.output + '.txt')
+        ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_pre'], args.output + '.png')       
 
 def sub_roc(args):
     model = ul.load_model(args.model)
