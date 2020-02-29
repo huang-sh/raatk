@@ -238,9 +238,9 @@ def command_parser():
 
     parser_hpo = subparsers.add_parser('hpo', help='hpyper-parameter optimization')
     parser_hpo.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser_hpo.add_argument('-c', '--C',  nargs='+', required=True, type=float,
+    parser_hpo.add_argument('-c', '--C',  nargs='+', required=True, type=int,
                             help='regularization parameter value range [start, stop, [num]]')
-    parser_hpo.add_argument('-g', '--gamma', nargs='+', required=True, type=float,
+    parser_hpo.add_argument('-g', '--gamma', nargs='+', required=True, type=int,
                             help='Kernel coefficient value range [start, stop, [num]]')
     parser_hpo.set_defaults(func=sub_hpo)
     
