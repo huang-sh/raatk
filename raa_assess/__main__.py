@@ -199,9 +199,13 @@ def sub_split(args):
 # TODO
 def sub_transfer(args):
     pass
-        
+
+class MyArgumentParser(argparse.ArgumentParser):
+    def convert_arg_line_to_args(self, arg_line):
+        return arg_line.split()
+ 
 def command_parser():
-    parser = argparse.ArgumentParser(description='reduce amino acids toolkit')
+    parser = MyArgumentParser(description='reduce amino acids toolkit', fromfile_prefix_chars='@')
     subparsers = parser.add_subparsers(help='sub-command help')
 
     parser_v = subparsers.add_parser('view', help='view the reduce amino acids scheme')
