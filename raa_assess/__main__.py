@@ -110,7 +110,7 @@ def sub_extract(args):
 
 def sub_hpo(args):
     params = ul.param_grid(args.C, args.gamma)
-    x, y = ul.load_normal_data(args.file)
+    x, y = ul.load_data(args.file, normal=True)
     best_c, best_gamma = cp.grid_search(x, y, params)
     print("C: %s, gamma: %s" % (best_c, best_gamma))
 
@@ -122,12 +122,12 @@ def sub_train(args):
         out_dir.mkdir(exist_ok=True)
         cp.batch_train(in_dir, out_dir, c, g, args.process)
     else:
-        x, y = ul.load_normal_data(args.file)
+        x, y = ul.load_data(args.file, normal=True)
         model = cp.train(x, y, c, g)
         cp.save_model(model, args.output) 
 
 def sub_predict(args):
-    x, _ = ul.load_normal_data(args.file, label_exist=False)
+    x, _ = ul.load_data(args.file, label_exist=False, normal=True)
     model = ul.load_model(args.model)
     y_pred = cp.predict(x, model)
     ul.save_y(args.output, y_pred)
@@ -140,7 +140,7 @@ def sub_eval(args):
         result_json = args.output + ".json"
         ul.save_json(all_sub_metric_dic, result_json)
     else:
-        x, y = ul.load_normal_data(args.file)
+        x, y = ul.load_data(args.file, normal=True)
         metric_dic = cp.evaluate(x, y, cv, c, g, probability=True)
         ul.save_report(metric_dic, args.output + '.txt')
         ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
@@ -148,15 +148,16 @@ def sub_eval(args):
 def sub_roc(args):
     model = ul.load_model(args.model)
     model.set_params(probability=True)
-    x, y = ul.load_normal_data(args.file)
+    x, y = ul.load_data(args.file, normal=True)
     ul.roc_eval(x, y, model, args.output)
 
 def sub_ifs(args):
     ul.exist_file(*args.file)
     C, gamma, step, cv, n_jobs = args.C, args.gamma, args.step, args.cv, args.process
     if args.mix:
+        pass
         x, y = ul.feature_mix(args.file)
-        noraml_x, noraml_y = ul.load_normal_data((x, y))
+        noraml_x, noraml_y = ul.load_data((x, y))
         result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
         x_tricks = [i for i in range(0, x.shape[1], args.step)]
         x_tricks.append(x.shape[1])
@@ -167,15 +168,18 @@ def sub_ifs(args):
         draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
     else:
         for file, out in zip(args.file, args.output): 
-            noraml_x, noraml_y = ul.load_normal_data(file)
-            result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
-            x_tricks = [i for i in range(0, noraml_x.shape[1], args.step)]
-            x_tricks.append(noraml_x.shape[1])
-            acc_ls = [0] + [i[0][0][0] for i in result_ls]
-            ul.save_y(out, x_tricks, acc_ls)
+            x, y = ul.load_data(file)
+            result_ls,  sort_idx = cp.feature_select(x, y, C, gamma, step, cv, n_jobs)
+            x_tricks = [i for i in range(0, x.shape[1], args.step)]
+            x_tricks.append(x.shape[1])
+            acc_ls = [0] + [i['sub_metric'][0][0][0] for i in result_ls]
+            ul.save_y(out+".txt", x_tricks, acc_ls)
             max_acc = max(acc_ls)
-            best_n = acc_ls.index(max_acc) * step
-            draw.p_fs(x_tricks, acc_ls, out+'.png', max_acc=max_acc, best_n=best_n)
+            best_n = acc_ls.index(max_acc) 
+            draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n* step)
+            sort_x = x[:, sort_idx[:best_n+1]]
+            sort_file =  out + '_best.csv'
+            ul.write_array(sort_file, y.reshape(-1, 1), sort_x)
 
 def sub_plot(args):
     ul.mkdirs(args.outdir)
