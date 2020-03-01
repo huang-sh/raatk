@@ -177,10 +177,10 @@ def sub_ifs(args):
             max_acc = max(acc_ls)
             best_n = acc_ls.index(max_acc) * step
             draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n)
-            sort_x = x[:, sort_idx[:best_n]]
-            sort_file =  out + '_best.csv'
-            ul.write_array(sort_file, y.reshape(-1, 1), sort_x)
-
+            best_x = x[:, sort_idx[:best_n]]
+            best_file =  out + '_best.csv'
+            ul.write_array((y.reshape(-1, 1), best_x), best_file)
+            
 def sub_plot(args):
     ul.mkdirs(args.outdir)
     with open(args.file, 'r') as f:
