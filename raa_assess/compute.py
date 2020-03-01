@@ -40,7 +40,7 @@ def save_model(model, file_path):
 
 def batch_train(in_dir, out_dir, C, gamma, n_job):
     def process_func(file, C, gamma):
-        x, y = ul.load_normal_data(file)
+        x, y = ul.load_data(file, normal=True)
         model = train(x, y, C, gamma)
         return model
     train_func = partial(process_func, C=C, gamma=gamma)
@@ -81,7 +81,7 @@ def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
 def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
     
     def eval_(file, C, gamma, cv):
-        x, y = ul.load_normal_data(file)
+        x, y = ul.load_data(file, normal=True)
         metric_dic = evaluate(x, y, cv, C=C, gamma=gamma)
         return metric_dic['sub_metric']
         
@@ -112,4 +112,4 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
         step_num = feature_len // step + 2
     result_ls = Parallel(n_jobs=n_jobs)(
         delayed(evla_func)(x[:, feature_idx[:i*step]], y) for i in range(1, step_num))
-    return result_ls
+    return result_ls, feature_idx
