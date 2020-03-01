@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from sklearn.preprocessing import Normalizer
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
 try:
@@ -111,5 +112,6 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
     else:
         step_num = feature_len // step + 2
     result_ls = Parallel(n_jobs=n_jobs)(
-        delayed(evla_func)(x[:, feature_idx[:i*step]], y) for i in range(1, step_num))
+        delayed(evla_func)(
+            scaler.fit_transform(x[:, feature_idx[:i*step]]), y) for i in range(1, step_num))
     return result_ls, feature_idx
