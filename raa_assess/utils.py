@@ -232,7 +232,7 @@ def mkdirs(directory):
     except FileExistsError:
         pass
 
-def load_normal_data(file_data, label_exist=True): ## file for data (x,y)
+def load_data(file_data, label_exist=True, normal=False): ## file for data (x,y)
     if isinstance(file_data, (tuple, list)):
         if all([isinstance(i, np.ndarray) for i in file_data]):
             x, y = file_data
@@ -244,8 +244,9 @@ def load_normal_data(file_data, label_exist=True): ## file for data (x,y)
             x, y = data, None
     else:
         raise FileNotFoundError(file_data) # raise error
-    scaler = Normalizer()
-    x = scaler.fit_transform(x)
+    if normal:
+        scaler = Normalizer()
+        x = scaler.fit_transform(x)
     return x, y
 
 def load_model(model_path):
