@@ -175,8 +175,8 @@ def sub_ifs(args):
             acc_ls = [0] + [i['sub_metric'][0][0][0] for i in result_ls]
             ul.save_y(out+".txt", x_tricks, acc_ls)
             max_acc = max(acc_ls)
-            best_n = acc_ls.index(max_acc) 
-            draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n* step)
+            best_n = acc_ls.index(max_acc) * step
+            draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n)
             sort_x = x[:, sort_idx[:best_n+1]]
             sort_file =  out + '_best.csv'
             ul.write_array(sort_file, y.reshape(-1, 1), sort_x)
