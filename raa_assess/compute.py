@@ -95,6 +95,7 @@ def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
     return all_metric_dic
 
 def feature_select(x, y, C, gamma, step, cv, n_jobs):
+    scaler = Normalizer()
     selector = VarianceThreshold()
     new_x = selector.fit_transform(x)
     score_idx = selector.get_support(indices=True)
