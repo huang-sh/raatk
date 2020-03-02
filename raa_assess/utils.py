@@ -182,7 +182,15 @@ def filter_type(score_metric, type_ls, filter_num=8):
             filter_type.append(type_id)
     return np.array(filter_scores), filter_type
    
-        
+def heatmap_txt(data, types, out):
+    with open(out, "w", newline="") as f:
+        fc = csv.writer(f)
+        col = ["size"] + types
+        fc.writerow(col)
+        for row, size in zip(data, range(2, 21)):
+            line = [size] + row.tolist()
+            fc.writerow(line)
+
 def eval_plot(result_dic, out, fmt, filter_num=8):
     key = 'acc'
     scores, types = dic2array(result_dic, key=key)
@@ -194,6 +202,8 @@ def eval_plot(result_dic, out, fmt, filter_num=8):
     f_font_size = {"annot_size": f_annot_size, "tick_size": f_tick_size, "label_size": f_label_size}
 
     heatmap_path = out / f'{key}_heatmap.{fmt}'
+    txt_path = out / f'{key}_heatmap.csv'
+    heatmap_txt(scores.T, types, txt_path)
     draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path, **font_size)
     f_heatmap_path = out / f'f{filter_num}_{key}_heatmap.{fmt}'
     draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path, **f_font_size)
