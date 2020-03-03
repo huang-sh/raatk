@@ -380,6 +380,8 @@ def save_report(metric_dic, report_file):
             f.write("\n\n")
 
 def k_roc_curve_plot(y_true, y_prob, out):
+    if len(np.unique(y_true[0])) != 2:
+        exit()
     fig, ax = plt.subplots()
     k_fold = len(y_true)
     num = sum(map(len, y_true))
