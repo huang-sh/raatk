@@ -41,7 +41,7 @@ class Evaluate:
             if self.probability:
                 y_prob_arr[test_idx] = clf.predict_proba(x_test)[:,1]
         self.sub_metric = [self.metrics_(y, y_pre_arr)]
-        self.cm = [multilabel_confusion_matrix(y, y_pre_arr)]
+        self.mcm = [multilabel_confusion_matrix(y, y_pre_arr)]
         self.cv_eval = None
         self.y_true = [y]
         self.y_pre = [y_pre_arr]
@@ -53,7 +53,7 @@ class Evaluate:
         clf = self.model
         X, y = self.x, self.y
         metric_ls = []
-        cm = []
+        mcm = []
         y_true_ls = []
         y_pre_ls = []
         y_prob_ls = []
@@ -63,7 +63,7 @@ class Evaluate:
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
             sub_cm = multilabel_confusion_matrix(y_true, y_pre)
-            cm.append(sub_cm)
+            mcm.append(sub_cm)
             y_true_ls.append(y_true)
             y_pre_ls.append(y_pre)
             sub_metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
@@ -71,9 +71,9 @@ class Evaluate:
             if self.probability:
                 y_prob = fit_clf.predict_proba(x_test)[:, 1]
                 y_prob_ls.append(y_prob)
-             ## self.cm=[]; self.cm.append(sub_cm)为啥不行？？？ 
+             ## self.mcm=[]; self.mcm.append(sub_cm)为啥不行？？？ 
         # self.metric = np.mean(metric_ls, axis=0)
-        self.cm = cm
+        self.mcm = mcm
         self.sub_metric = metric_ls
         self.y_true = y_true_ls
         self.y_pre = y_pre_ls
@@ -84,7 +84,7 @@ class Evaluate:
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
         self.sub_metric = [self.metrics_(y_true, y_pre)]
-        self.cm = [multilabel_confusion_matrix(y_true, y_pre)]
+        self.mcm = [multilabel_confusion_matrix(y_true, y_pre)]
         # self.fpr_tpr_auc_cm(y, y_pre)
 
     def metrics_(self, y_true, y_pre):
@@ -110,18 +110,18 @@ class Evaluate:
     def get_eval_idx(self):
         # acc, sn, sp, ppv, mcc = self.metric    #  "acc": acc, "sn": sn, "sp": sp, "ppv": ppv, "mcc": mcc, 
         metric_dic = {'y_true': self.y_true, "y_pre": self.y_pre, 'y_prob': self.y_prob,
-                     "cm":self.cm, "sub_metric": self.sub_metric}
+                     "mcm":self.mcm, "sub_metric": self.sub_metric}
         return metric_dic
 
     def fpr_tpr_auc_cm(self, y, y_pre):
-        self.fpr, self.tpr, self.auc, self.cm = [], [], [], []
+        self.fpr, self.tpr, self.auc, self.mcm = [], [], [], []
         self.y, self.y_pre = [], []
         fpr, tpr, _ = roc_curve(y, y_pre)
         self.fpr.append(fpr)
         self.tpr.append(tpr)
         self.auc.append(auc(fpr, tpr))
-        cm = multilabel_confusion_matrix(y, y_pre)
-        self.cm.append(cm)
+        mcm = multilabel_confusion_matrix(y, y_pre)
+        self.mcm.append(mcm)
         self.y.append(y)
         self.y_pre.append(y_pre)
 
