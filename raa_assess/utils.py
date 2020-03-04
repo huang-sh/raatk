@@ -12,6 +12,7 @@ from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve, RocCurveDisplay, auc
 
 try:
