@@ -341,32 +341,43 @@ TEXT = """
 def save_report(metric_dic, report_file):
     y_true = metric_dic['y_true']
     y_pre = metric_dic['y_pre']
-    cm = metric_dic['cm']
+    mcm = metric_dic['mcm']
     sub_metric = metric_dic['sub_metric']
     with open(report_file, "w", encoding="utf-8") as f:
-        for cm_idx, sub_cm in enumerate(cm):       
-            kfi = f"{cm_idx}\n"
+        for mcm_idx, sub_mcm in enumerate(mcm):
+            cm = confusion_matrix(y_true[mcm_idx], y_pre[mcm_idx])
+            clses = cm.shape[0]
+            col_cls = "".join(([f"{'':<4}"]+[f"{i:<4}" for i in range(clses)]))
+            f.write(col_cls)
+            f.write('\n')
+            for idx, line in enumerate(cm):
+                row_preds = "".join(([f'{idx:<4}']+[f"{i:<4}" for i in line]))
+                f.write(row_preds)
+                f.write('\n')
+            f.write("\n")
+            
+            kfi = f"{mcm_idx}\n"
             f.write(kfi)
             col = f"     {'tp':<4}{'fn':<4}{'fp':<4}{'tn':<4}{'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
             f.write(col)
-            for pos_idx, line in enumerate(sub_cm):
+            for pos_idx, line in enumerate(sub_mcm):
                 (tn, fp), (fn, tp) = line
-                accl, snl, spl, ppvl, mccl = sub_metric[cm_idx]
+                accl, snl, spl, ppvl, mccl = sub_metric[mcm_idx]
                 acc, sn, sp, ppv, mcc = accl[pos_idx]*100, snl[pos_idx]*100, spl[pos_idx]*100, ppvl[pos_idx]*100, mccl[pos_idx]*100
                 linei = f"{pos_idx:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
                 f.write(linei)  
             f.write("\n\n")
         else:
-            mean_cm = np.mean(cm, axis=0)
+            mean_mcm = np.mean(mcm, axis=0)
             mean_metric = np.mean(sub_metric, axis=0)
             f.write("mean\n")
             col = f"     {'tp':<4}{'fn':<4}{'fp':<4}{'tn':<4}{'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
             f.write(col)
-            for pos_idx, line in enumerate(mean_cm):
+            for pos_idx, line in enumerate(mean_mcm):
                 (tn, fp), (fn, tp) = line
                 accl, snl, spl, ppvl, mccl = mean_metric
                 acc, sn, sp, ppv, mcc = accl[pos_idx]*100, snl[pos_idx]*100, spl[pos_idx]*100, ppvl[pos_idx]*100, mccl[pos_idx]*100
-                linei = f"{pos_idx:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
+                linei = f"{pos_idx:<5}{tp:<4.1f}{fn:<4.1f}{fp:<4.1f}{tn:<4.1f}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
                 f.write(linei)  
             f.write("\n\n")
         f.write(TEXT)
