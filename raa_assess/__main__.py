@@ -195,8 +195,8 @@ def sub_split(args):
     ts = args.testsize
     if 0 < ts < 1:
         data_train, data_test = ul.split_data(args.file, ts)
-        ul.write_array(data_train, f"{1-ts}_{args.output}")
-        ul.write_array(data_test, f"{ts}_{args.output}")
+        ul.write_array([data_train], f"{1-ts}_{args.output}")
+        ul.write_array([data_test], f"{ts}_{args.output}")
     else:
         print("error")
 
