@@ -284,7 +284,7 @@ def merge_feature_file(label, file):
         mix_data = np.vstack(data_ls)
     return mix_data
 
-def write_array(data, file):
+def write_array(file, *data):
     data = np.hstack(data)
     np.savetxt(file, data, delimiter=",", fmt="%.8f")
     
