@@ -179,7 +179,7 @@ def sub_ifs(args):
             draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n)
             best_x = x[:, sort_idx[:best_n]]
             best_file =  out + '_best.csv'
-            ul.write_array((y.reshape(-1, 1), best_x), best_file)
+            ul.write_array(best_file, y.reshape(-1, 1), best_x)
             
 def sub_plot(args):
     ul.mkdirs(args.outdir)
@@ -189,14 +189,14 @@ def sub_plot(args):
 
 def sub_merge(args):
     mix_data = ul.merge_feature_file(args.label, args.file)
-    ul.write_array(mix_data, args.output)
+    ul.write_array(args.output, mix_data)
 
 def sub_split(args):
     ts = args.testsize
     if 0 < ts < 1:
         data_train, data_test = ul.split_data(args.file, ts)
-        ul.write_array([data_train], f"{1-ts}_{args.output}")
-        ul.write_array([data_test], f"{ts}_{args.output}")
+        ul.write_array(f"{1-ts}_{args.output}", data_train)
+        ul.write_array(f"{ts}_{args.output}", data_test)
     else:
         print("error")
 
