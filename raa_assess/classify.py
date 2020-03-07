@@ -108,9 +108,12 @@ class Evaluate:
         return acc, sn, sp, ppv, mcc
 
     def get_eval_idx(self):
-        # acc, sn, sp, ppv, mcc = self.metric    #  "acc": acc, "sn": sn, "sp": sp, "ppv": ppv, "mcc": mcc, 
+        # acc, sn, sp, ppv, mcc = self.metric 
+        mcm = np.mean(self.mcm, axis=0)
+        tp = mcm[:, 1, 1]
+        oa = np.sum(tp) / np.sum(mcm)
         metric_dic = {'y_true': self.y_true, "y_pre": self.y_pre, 'y_prob': self.y_prob,
-                     "mcm":self.mcm, "sub_metric": self.sub_metric}
+                     "mcm":self.mcm, "sub_metric": self.sub_metric, 'OA': oa}
         return metric_dic
 
     def fpr_tpr_auc_cm(self, y, y_pre):
