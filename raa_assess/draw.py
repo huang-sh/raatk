@@ -80,6 +80,7 @@ def p_acc_heat(data, vmin, vmax, xticklabels, out, **kwargs):
 def p_fs(x_trick, y_trick, out, **kwargs):
     ax = plt.figure().gca()
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    x_trick = x_trick[:len(y_trick)]
     plt.plot(x_trick, y_trick)
     max_acc = kwargs.get("max_acc", None)
     best_n = kwargs.get("best_n", None)
