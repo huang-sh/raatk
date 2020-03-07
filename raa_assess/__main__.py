@@ -173,9 +173,7 @@ def sub_ifs(args):
             result_ls,  sort_idx = cp.feature_select(x, y, C, gamma, step, cv, n_jobs)
             x_tricks = [i for i in range(0, x.shape[1], args.step)]
             x_tricks.append(x.shape[1])
-            clses = len(result_ls[0]['sub_metric'][0][0])
-            oa = lambda x: sum(np.mean(x['sub_metric'], axis=0)[1]) / clses
-            acc_ls = [0] + [oa(i) for i in result_ls]
+            acc_ls = [0] + [i["OA"] for i in result_ls]
             ul.save_y(out+".txt", x_tricks, acc_ls)
             max_acc = max(acc_ls)
             best_n = acc_ls.index(max_acc) * step
