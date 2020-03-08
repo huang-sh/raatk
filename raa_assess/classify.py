@@ -105,7 +105,7 @@ class Evaluate:
         ppv = tp / (tp + fp) # presision
         acc = (tp + tn) / (tp + tn + fp + fn)
         mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
-        return acc, sn, sp, ppv, mcc
+        return [acc, sn, sp, ppv, mcc]
 
     def get_eval_idx(self):
         # acc, sn, sp, ppv, mcc = self.metric 
