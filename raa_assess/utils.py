@@ -312,8 +312,9 @@ def save_json(metric_dic, path):
     for type_dir, metric_ls in metric_dic.items():
         result_dic.setdefault(type_dir.name, {})
         for size_dir, metrics in zip(type_dir.iterdir(), metric_ls):
-            acc, sn, sp, ppv, mcc = [i.tolist() for i in np.mean(metrics, axis=0)]
-            metric_dic = {'sn': sn, 'sp': sp, 'ppv': ppv, 'acc': acc, 'mcc': mcc}
+            acc, sn, sp, ppv, mcc, oa = [i.tolist() for i in np.mean(metrics, axis=0)]
+            metric_dic = {'sn': sn, 'sp': sp, 'ppv': ppv,
+                         'acc': acc, 'mcc': mcc, 'OA': oa}
             if type_dir.name == "naa":
                 naa_metric = metric_dic
             else:
