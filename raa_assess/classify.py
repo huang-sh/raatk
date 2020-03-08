@@ -109,9 +109,7 @@ class Evaluate:
 
     def get_eval_idx(self):
         # acc, sn, sp, ppv, mcc = self.metric 
-        mcm = np.mean(self.mcm, axis=0)
-        tp = mcm[:, 1, 1]
-        oa = np.sum(tp) / np.sum(mcm)
+        oa = sum([sum(i[:, 1, 1]) for i in self.mcm]) / sum([len(i) for i in self.y_true])
         metric_dic = {'y_true': self.y_true, "y_pre": self.y_pre, 'y_prob': self.y_prob,
                      "mcm":self.mcm, "sub_metric": self.sub_metric, 'OA': oa}
         return metric_dic
