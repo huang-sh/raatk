@@ -84,7 +84,11 @@ def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
     def eval_(file, C, gamma, cv):
         x, y = ul.load_data(file, normal=True)
         metric_dic = evaluate(x, y, cv, C=C, gamma=gamma)
-        return metric_dic['sub_metric']
+        oa = sum([sum(i[:, 1, 1]) for i in metric_dic['mcm']]) / sum([len(i) for i in metric_dic['y_true']])
+        OA = np.array([oa for _ in np.unique(metric_dic['y_true'][0])])
+        for i in range(len(metric_dic['y_true'])):
+            metric_dic["sub_metric"][i].append(OA)
+        return metric_dic["sub_metric"]
         
     eval_func = partial(eval_, cv=cv, C=C, gamma=gamma)
     all_metric_dic = {}
