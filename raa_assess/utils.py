@@ -159,7 +159,7 @@ def roc_eval(x, y, model, out):
     svc_disp = plot_roc_curve(model, x, y)
     plt.savefig(out, dpi=1000, bbox_inches="tight")
 
-def dic2array(result_dic, key='oa', cls=0):
+def dic2array(result_dic, key='OA', cls=0):
     acc_ls = []  # all type acc
     type_ls = [type_id for type_id in result_dic.keys() if type_id != "naa"]
     type_ls.sort(key=lambda x: int(x[4:]))
@@ -168,12 +168,8 @@ def dic2array(result_dic, key='oa', cls=0):
         type_ = result_dic[ti]
         score_size_ls = []
         for size in range(2, 21):
-            if key == "oa":
-                key_scores = type_.get(str(size), {'sn': [0]*10}).get('sn', 0)
-                score = sum(key_scores)/len(key_scores) if key_scores else 0
-            else:
-                key_scores = type_.get(str(size), {key: [0]*10}).get(key, 0)
-                score = key_scores[cls] if key_scores else 0 
+            key_scores = type_.get(str(size), {key: [0]*10}).get(key, 0)
+            score = key_scores[cls] if key_scores else 0  
             score_size_ls.append(score)
         all_score_array[idx] = score_size_ls
     return all_score_array, type_ls
@@ -197,7 +193,7 @@ def heatmap_txt(data, types, out):
             fc.writerow(line)
 
 def eval_plot(result_dic, out, fmt, filter_num=8):
-    key = 'oa'
+    key = 'OA'
     scores, types = dic2array(result_dic, key=key)
     f_scores, f_types = filter_type(scores, types, filter_num=filter_num)
     
