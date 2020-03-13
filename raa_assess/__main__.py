@@ -11,6 +11,7 @@ import json
 import argparse
 from pathlib import Path
 
+import numpy as np
 
 try:
     from . import draw
@@ -25,7 +26,7 @@ except ImportError:
 def sub_view(args):
     type_id = ','.join(map(str, args.type))
     size = ','.join(map(str, args.size))
-    values = ul.reduce_query(type_id, size)
+    values = ul.reduce_query(type_id, size) ## 获取氨基酸约化字母表
     for item in values:
         tpi, size, cluster, method = item
         info = f"type{tpi:<3}{size:<3}{cluster:<40}{method}"
@@ -62,51 +63,38 @@ def sub_reduce(args):
                 naa_dir = out / "naa"
                 naa_dir.mkdir(exist_ok=True)
                 import shutil
-                shutil.copyfile(file, naa_dir / "20-ACDEFGHIKLMNPQRSTVWY")
+                shutil.copyfile(file, naa_dir / "20-ACDEFGHIKLMNPQRSTVWY.txt")
                 
 def sub_extract(args):
     k, gap, lam, n_jobs = args.kmer, args.gap, args.lam, args.process
     if args.directory:
+        out = Path(args.output[0])
+        out.mkdir(exist_ok=True)
+        ul.batch_extract(args.file, out, k, gap, lam, n_jobs=n_jobs)
+    else:
+        if args.raa:
+            raa = list(args.raa) 
+        else:
+            raa = list(Path(args.file[0]).name.split('-')[-1])
+        xy_ls = []
+        for idx, file in enumerate(args.file):
+            feature_file = Path(file)
+            xy = ul.extract_feature(feature_file, raa, k, gap, lam)
+            if args.idx:
+                fea_idx = np.genfromtxt(args.idx, delimiter=',', dtype=int)
+                xy = xy[:, fea_idx]
+            if args.label_f:
+                y = np.array([[idx]]*xy.shape[0])
+                xy = np.hstack([y, xy])
+            xy_ls.append(xy)
         if args.merge:
             out = Path(args.output[0])
-            if out.exists():
-                raise ValueError(f"{out} has existed")
-            for idx, dire in enumerate(args.file):
-                idx = idx if args.label_f else None
-                indir = Path(dire)
-                out.mkdir(exist_ok=True)
-                ul.batch_extract(indir, out, k, gap, lam, label=idx,
-                                  mode="a+", n_jobs=n_jobs)
-        else:
-            for idx, (dire, out) in enumerate(zip(args.file, args.output)):
-                label = idx if args.label_f else None
-                indir, outdir = Path(dire), Path(out)
-                outdir.mkdir(exist_ok=True)
-                ul.batch_extract(indir, outdir, k, gap, lam, label=label,
-                                  mode="w", n_jobs=n_jobs)
-    else:
-        if args.merge: 
-            out = Path(args.output[0])
-            if out.exists():
-                raise ValueError(f"{out} has existed")
-            for idx, file in enumerate(args.file):
-                idx = idx if args.label_f else None
-                feature_file = Path(file)
-                if args.raa is None:
-                    raa = list(feature_file.name.split('-')[-1])
-                else:
-                    raa = list(args.raa)
-                ul.extract_to_file(feature_file, out, raa,k, gap, lam, 
-                                   label=idx, mode="a+")
-        else:
-            for idx, (file, out) in enumerate(zip(args.file, args.output)):
-                feature_file = Path(file)
-                if args.raa is None:
-                    raa = list(feature_file.name.split('-')[-1])
-                else:
-                    raa = list(args.raa)
-                label = idx if args.label_f else None
-                ul.extract_to_file(feature_file, Path(out), raa, k, gap, lam, label=label, mode="w")
+            seq_mtx = np.vstack(xy_ls)
+            ul.write_array(Path(out), seq_mtx)
+            exit()
+        for idx, o in enumerate(args.output):
+            ul.write_array(Path(o), xy_ls[idx])
+
 
 def sub_hpo(args):
     params = ul.param_grid(args.C, args.gamma)
@@ -123,14 +111,15 @@ def sub_train(args):
         cp.batch_train(in_dir, out_dir, c, g, args.process)
     else:
         x, y = ul.load_data(args.file, normal=True)
-        model = cp.train(x, y, c, g)
+        model = cp.train(x, y, c, g, probability=True)
         cp.save_model(model, args.output) 
 
 def sub_predict(args):
     x, _ = ul.load_data(args.file, label_exist=False, normal=True)
     model = ul.load_model(args.model)
-    y_pred = cp.predict(x, model)
-    ul.save_y(args.output, y_pred)
+    model.set_params(probability=True)
+    y_pred, y_prob = cp.predict(x, model)
+    ul.write_array(args.output, y_pred.reshape(-1,1), y_prob)
     
 def sub_eval(args):
     c, g, cv = args.C, args.gamma, args.cv
@@ -167,20 +156,22 @@ def sub_ifs(args):
         best_n = acc_ls.index(max_acc) * step
         draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
     else:
-        import numpy as np
         for file, out in zip(args.file, args.output): 
             x, y = ul.load_data(file)
-            result_ls,  sort_idx = cp.feature_select(x, y, C, gamma, step, cv, n_jobs)
+            result_ls, sort_idx = cp.feature_select(x, y, C, gamma, step, cv, n_jobs)
             x_tricks = [i for i in range(0, x.shape[1], args.step)]
             x_tricks.append(x.shape[1])
             acc_ls = [0] + [i["OA"] for i in result_ls]
-            ul.save_y(out+".txt", x_tricks, acc_ls)
             max_acc = max(acc_ls)
             best_n = acc_ls.index(max_acc) * step
             draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n)
             best_x = x[:, sort_idx[:best_n]]
             best_file =  out + '_best.csv'
             ul.write_array(best_file, y.reshape(-1, 1), best_x)
+            x_arr = np.array(x_tricks[:len(acc_ls)]).reshape(-1, 1)
+            y_arr = np.array(acc_ls).reshape(-1, 1)
+            ul.write_array(out+".csv", y_arr, x_arr)
+            ul.write_array(out+f"-{best_n}-idx.csv", sort_idx[:best_n])
             
 def sub_plot(args):
     ul.mkdirs(args.outdir)
@@ -237,7 +228,8 @@ def command_parser():
     parser_ex.add_argument('-g', '--gap', type=int, default=0, help='gap value')
     parser_ex.add_argument('-l', '--lam', type=int, default=0, 
                           help='lambda-correlation value')
-    parser_ex.add_argument('-raa', help='reduced amino acid cluster')
+    parser_ex.add_argument('-raa', help='reduced amino acid cluster', default="ACDEFGHIKLMNPQRSTVWY")
+    parser_ex.add_argument('-idx', help='feature index')
     parser_ex.add_argument('-m', '--merge', action='store_true', help='merge feature files into one')
     parser_ex.add_argument('-o', '--output', nargs='+', required=True, help='output directory')
     parser_ex.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
@@ -330,4 +322,3 @@ def command_parser():
 
 if __name__ == '__main__':
     command_parser()
-
