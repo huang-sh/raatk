@@ -126,34 +126,45 @@ def batch_reduce(file, cluster_info, out_dir):
             type_id, size, cluster = to_do_map[i]
             print("done %s %s %s" % (type_id, size, cluster)) 
 
-def extract_to_file(feature_file, output, raa, k, gap, lam, label=0, mode="w"):
-    with open(feature_file, "r") as rh, open(output, mode, newline="\n") as wh:
-        h = csv.writer(wh)
+def extract_feature(feature_file, raa, k, gap, lam):
+    with open(feature_file, "r") as rh:
         seqs = read_fasta(rh)
-        for seq in seqs:
-            _, seq = seq
-            aa_vec = fea.seq_aac(seq, raa, k=k, gap=gap, lam=lam)
-            if label is None:
-                line = aa_vec
-            else:
-                line = [label] + aa_vec
-            h.writerow(line)
+        fea_func = partial(fea.seq_aac, raa=raa, k=k, gap=gap, lam=lam)
+        seq_vec = np.array([fea_func(sq[1]) for sq in seqs])
+    return seq_vec
             
 # TODO - IO optimization     
-def batch_extract(in_dir, out_dir, k, gap, lam, label=0, mode="w", n_jobs=1):
-    def params(size_dir, type_dir):
-        output = type_dir / (size_dir.stem + ".csv")
-        raa_str = size_dir.stem.split("-")[-1]
-        print(size_dir)
-        return size_dir, output, list(raa_str)
+def batch_extract(in_dirs, out_dir, k, gap, lam, n_jobs=1):
 
-    extract_fun = partial(extract_to_file, k=k, gap=gap, 
-                          lam=lam, label=label, mode=mode)
-    with Parallel(n_jobs=n_jobs) as pl:
-        for types in in_dir.iterdir():
-            type_dir = out_dir / types.name
+    def parse_filepath(in_dirs, out_dir):
+        tps_iter = [Path(i).iterdir() for i in in_dirs]
+        for tps in zip(*tps_iter):
+            type_dir = out_dir / tps[0].name
             type_dir.mkdir(exist_ok=True)
-            pl(delayed(extract_fun)(*params(size_dir, type_dir)) for size_dir in types.iterdir())
+            sizes_iter = [size.iterdir() for size in tps]
+            for sfs in zip(*sizes_iter):
+                szie_stem = sfs[0].stem
+                out = type_dir / (szie_stem + ".csv")
+                raa_str = szie_stem.split("-")[-1]
+                yield out, sfs, raa_str
+
+    def files_extract(raa, k, gap, lam, *files):
+        xy_ls = []
+        for idx, file in enumerate(files):
+            xy = extract_feature(file, raa, k, gap, lam)
+            y = np.array([[idx]]*xy.shape[0])
+            xy = np.hstack([y, xy])
+            xy_ls.append(xy)
+        new_xy = np.vstack(xy_ls)
+        return new_xy
+
+    def feature2file(out, files, raa, k, gap, lam):
+        data = files_extract(raa, k, gap, lam, *files)
+        np.savetxt(out, data, delimiter=",", fmt="%.6f")
+
+    extract_fun = partial(feature2file, k=k, gap=gap, lam=lam)
+    with Parallel(n_jobs=n_jobs) as pl:
+        pl(delayed(extract_fun)(*paras) for paras in parse_filepath(in_dirs, out_dir))
 
 def roc_eval(x, y, model, out):
     svc_disp = plot_roc_curve(model, x, y)
@@ -286,7 +297,7 @@ def merge_feature_file(label, file):
 
 def write_array(file, *data):
     data = np.hstack(data)
-    np.savetxt(file, data, delimiter=",", fmt="%.8f")
+    np.savetxt(file, data, delimiter=",", fmt="%.6f")
     
 def split_data(file, test_size):
     data = np.genfromtxt(file, delimiter=',')
@@ -444,6 +455,7 @@ def exist_file(*file_path):
             print("file not found!")
             exit()
 
+# 先将就用            
 def heatmap_font_size(types):
     if types <= 10:
         annot_size = 4
