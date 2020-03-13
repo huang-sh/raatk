@@ -23,7 +23,7 @@ def p_bivariate_density(x, y, out):
     g = sns.jointplot(x, y, kind="kde", xlim=(2, 20), ylim=(0, 1))
     g.set_axis_labels("size", "Acc")
     g.ax_joint.set_xticks(range(2, 21))
-    plt.savefig(out, dpi=600, bbox_inches="tight")
+    plt.savefig(out, dpi=1000, bbox_inches="tight")
 
 def p_comparison_type(diff_size, same_size, types_label, out):
     grid = plt.GridSpec(1, 4,)
@@ -55,7 +55,7 @@ def p_comparison_type(diff_size, same_size, types_label, out):
     ax2.text(m_size_idx, max_acc+0.01, f'{max_acc:.3f}',
              ha='center', va='bottom', fontsize=10, fontweight='bold')
     plt.tight_layout()
-    plt.savefig(out, bbox_inches="tight")
+    plt.savefig(out, dpi=1000, bbox_inches="tight")
 
 
 # TODO
@@ -74,7 +74,7 @@ def p_acc_heat(data, vmin, vmax, xticklabels, out, **kwargs):
     ax.set_yticklabels(range(2,21), fontsize=tick_size)
     ax.set_xlabel('Type', fontsize=label_size)
     ax.set_ylabel('Cluster Size', fontsize=label_size)
-    plt.savefig(out, dpi=600, bbox_inches="tight")
+    plt.savefig(out, dpi=1000, bbox_inches="tight")
     plt.close()
 
 def p_fs(x_trick, y_trick, out, **kwargs):
@@ -88,4 +88,4 @@ def p_fs(x_trick, y_trick, out, **kwargs):
         plt.scatter(best_n, max_acc, marker='*', c='r')
         plt.text(best_n, max_acc + 0.002, f'{best_n}, {max_acc:.4f}',
                 ha='center', va='bottom', fontsize=6, fontweight='bold')
-    plt.savefig(out, dpi=600)
+    plt.savefig(out, dpi=1000)
