@@ -42,7 +42,7 @@ def sub_reduce(args):
         if cluster:
             ul.check_aa(cluster)
             aa = cluster.split("-")
-            out = Path(out + "-" + "".join([i[0] for i in aa]))
+            out = Path(out)
             ul.reduce_to_file(file, aa, out)
         elif type_ and size:
             if "-" in type_[0]:
