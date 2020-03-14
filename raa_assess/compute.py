@@ -29,8 +29,8 @@ def grid_search(x, y, param_grid):
     C, gamma = clf.best_params_['C'], clf.best_params_['gamma']
     return C, gamma
     
-def train(x, y, C, gamma):
-    svc = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1)
+def train(x, y, C, gamma, probability=False):
+    svc = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1, probability=probability)
     model = svc.fit(x, y)
     return model
 
