@@ -119,7 +119,7 @@ def sub_predict(args):
     model = ul.load_model(args.model)
     model.set_params(probability=True)
     y_pred, y_prob = cp.predict(x, model)
-    ul.write_array(args.output, y_pred.reshape(-1,1), y_prob)
+    ul.write_array(args.output, y_pred.reshape(-1,1), y_prob.reshape(-1,1))
     
 def sub_eval(args):
     c, g, cv = args.C, args.gamma, args.cv
