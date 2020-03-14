@@ -118,8 +118,10 @@ def sub_predict(args):
     x, _ = ul.load_data(args.file, label_exist=False, normal=True)
     model = ul.load_model(args.model)
     model.set_params(probability=True)
-    y_pred, y_prob = cp.predict(x, model)
-    ul.write_array(args.output, y_pred.reshape(-1,1), y_prob.reshape(-1,1))
+    if y_prob:
+        ul.write_array(args.output, y_pred.reshape(-1,1), y_prob)
+    else:
+        ul.write_array(args.output, y_pred.reshape(-1,1))
     
 def sub_eval(args):
     c, g, cv = args.C, args.gamma, args.cv
