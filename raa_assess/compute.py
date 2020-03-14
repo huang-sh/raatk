@@ -20,8 +20,6 @@ except ImportError:
     import utils as ul
  
 
-HPOD = 0.6
-
 np.seterr(all='ignore')
 
 
@@ -61,8 +59,7 @@ def predict(x, model):
     try:
         y_prob = model.predict_proba(x)  ## 模型训练 probability=True才能用
     except:
-        y_prob = np.zeros_like(y_pred)
-        print(y_prob)
+        y_prob = None
     return y_pred, y_prob
 
 # TODO 分离clf？
