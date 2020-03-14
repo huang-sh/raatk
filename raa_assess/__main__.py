@@ -81,7 +81,7 @@ def sub_extract(args):
             feature_file = Path(file)
             xy = ul.extract_feature(feature_file, raa, k, gap, lam)
             if args.idx:
-                fea_idx = np.genfromtxt(args.idx, delimiter=',', dtype=int)
+                fea_idx = np.genfromtxt(args.idx, delimiter='\n').astype(int)
                 xy = xy[:, fea_idx]
             if args.label_f:
                 y = np.array([[idx]]*xy.shape[0])
