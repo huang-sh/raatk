@@ -57,9 +57,13 @@ def batch_train(in_dir, out_dir, C, gamma, n_job):
             save_pa(delayed(save_model)(m, type_dir/ f.stem) for m,f in zip(models, type_.iterdir()))
 
 def predict(x, model):
-    clf = model
-    y_pred = clf.predict(x)
-    return y_pred
+    y_pred = model.predict(x)
+    try:
+        y_prob = model.predict_proba(x)  ## 模型训练 probability=True才能用
+    except:
+        y_prob = np.zeros_like(y_pred)
+        print(y_prob)
+    return y_pred, y_prob
 
 # TODO 分离clf？
 def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
