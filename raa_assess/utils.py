@@ -266,6 +266,7 @@ def load_data(file_data, label_exist=True, normal=False): ## file for data (x,y)
             x, y = data, None
     else:
         raise FileNotFoundError(file_data) # raise error
+    x = x.reshape(1, -1) if len(x.shape) == 1 else x
     if normal:
         scaler = Normalizer()
         x = scaler.fit_transform(x)
