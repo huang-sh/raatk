@@ -19,7 +19,7 @@ def seq_aac(seq, raa, k=1, gap=0, lam=0):
     aa = [''.join(aa) for aa in product(raa, repeat=k)]
     f3 = partial(three_f, seq=seq, gap=gap, k=k, lam=lam)
     aa_list = [f3(i) for i in range(len(seq))]
-    aa_list = [i for i in aa_fre if len(i) ==k]
+    aa_list = [i for i in aa_list if len(i) ==k]
     aa_dict = Counter(aa_list)
     count = len(aa_list)
     aa_fre = [aa_dict[i] / count for i in aa]
