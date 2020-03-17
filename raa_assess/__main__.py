@@ -45,14 +45,15 @@ def sub_reduce(args):
             out = Path(out)
             ul.reduce_to_file(file, aa, out)
         elif type_ and size:
+        elif type_ and size:
             if "-" in type_[0]:
-                ss = type_[0].split("-")
-                types = [str(i) for i in range(int(ss[0]), int(ss[1])+1)]
+                start, end = type_[0].split("-")
+                types = map(str, range(int(start), int(end)+1))
             else:
                 types = map(str, type_)
             if "-" in size[0]:
-                ss = size[0].split("-")
-                sizes = [str(i) for i in range(int(ss[0]), int(ss[1])+1)]
+                start, end = size[0].split("-")
+                sizes = map(str, range(int(start), int(end)+1))
             else:
                 sizes = map(str, size)
             cluster_info = ul.reduce_query(",".join(types), ",".join(sizes))
