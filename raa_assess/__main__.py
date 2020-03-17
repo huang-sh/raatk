@@ -75,7 +75,7 @@ def sub_extract(args):
         if args.raa:
             raa = list(args.raa) 
         else:
-            raa = list(Path(args.file[0]).name.split('-')[-1])
+            raa = list(Path(args.file[0]).stem.split('-')[-1])
         xy_ls = []
         for idx, file in enumerate(args.file):
             feature_file = Path(file)
