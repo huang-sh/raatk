@@ -232,7 +232,7 @@ def command_parser():
     parser_ex.add_argument('-l', '--lam', type=int, default=0, 
                           help='lambda-correlation value')
     parser_ex.add_argument('-raa', help='reduced amino acid cluster', default="ACDEFGHIKLMNPQRSTVWY")
-    parser_ex.add_argument('-idx', '--index', help='feature index')
+    parser_ex.add_argument('-idx', '--index', default=None, help='feature index')
     parser_ex.add_argument('-m', '--merge', action='store_true', help='merge feature files into one')
     parser_ex.add_argument('-o', '--output', nargs='+', required=True, help='output directory')
     parser_ex.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
