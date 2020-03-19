@@ -101,6 +101,7 @@ def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
 
 def feature_select(x, y, C, gamma, step, cv, n_jobs):
     scaler = Normalizer()
+    scaler_ft = partial(scaler.fit_transform, y=y)
     selector = VarianceThreshold()
     new_x = selector.fit_transform(x)
     score_idx = selector.get_support(indices=True)
@@ -110,7 +111,7 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    evla_func =  partial(evaluate, C=C, gamma=gamma, cv=cv)
+    evla_func =  partial(evaluate, y=y, C=C, gamma=gamma, cv=cv)
     feature_len = len(feature_idx)
     feature_len // step
     if feature_len // step * step == feature_len:
@@ -119,5 +120,5 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
         step_num = feature_len // step + 2
     result_ls = Parallel(n_jobs=n_jobs)(
         delayed(evla_func)(
-            scaler.fit_transform(x[:, feature_idx[:i*step]]), y) for i in range(1, step_num))
+            scaler_ft(x[:, feature_idx[:i*step]])) for i in range(1, step_num))
     return result_ls, feature_idx
