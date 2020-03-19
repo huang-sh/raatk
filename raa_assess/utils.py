@@ -312,12 +312,6 @@ def param_grid(c, g):
     params = [{'kernel': ["rbf"], 'C': c_range,
                     'gamma': gamma_range}]
     return params
-
-def save_y(out, *y):
-    with open(out, "w", newline="\n") as f:
-        fc = csv.writer(f)
-        for line in zip(*y):
-            fc.writerow(line)
     
 def save_json(metric_dic, path):
     result_dic = {}
