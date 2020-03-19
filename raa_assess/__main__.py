@@ -147,16 +147,16 @@ def sub_ifs(args):
     C, gamma, step, cv, n_jobs = args.C, args.gamma, args.step, args.cv, args.process
     if args.mix:
         pass
-        x, y = ul.feature_mix(args.file)
-        noraml_x, noraml_y = ul.load_data((x, y))
-        result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
-        x_tricks = [i for i in range(0, x.shape[1], args.step)]
-        x_tricks.append(x.shape[1])
-        acc_ls = [0] + [i[0][0][0] for i in result_ls]
-        ul.save_y(args.output, x_tricks, acc_ls)
-        max_acc = max(acc_ls)
-        best_n = acc_ls.index(max_acc) * step
-        draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
+#         x, y = ul.feature_mix(args.file)
+#         noraml_x, noraml_y = ul.load_data((x, y))
+#         result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
+#         x_tricks = [i for i in range(0, x.shape[1], args.step)]
+#         x_tricks.append(x.shape[1])
+#         acc_ls = [0] + [i[0][0][0] for i in result_ls]
+#         ul.save_y(args.output, x_tricks, acc_ls)
+#         max_acc = max(acc_ls)
+#         best_n = acc_ls.index(max_acc) * step
+#         draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
     else:
         for file, out in zip(args.file, args.output): 
             x, y = ul.load_data(file)
