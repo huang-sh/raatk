@@ -1,25 +1,17 @@
 # RAATK
-一个命令行软件，用来评估不同约化氨基酸方案。
+A python-based reduce amino acid toolkit of machine learning for protein-dependent inference.
 
-有以下几个功能：
-- [view](#sc-view)     
-view reduced amino acid alphabet
-- [reduce](#sc-reduce)    
-reduce amino acid sequence
+## sub-commands
+- [view](#sc-view)
+- [reduce](#sc-reduce)
 - [extract](#sc-extract)    
-extract sequence feature
 - [eval](#sc-eval)    
-evaluate reduced amino acid alphabets and model
 - [plot](#sc-plot)    
-visulation
 - [train](#sc-train)    
-train model
 - [predict](#sc-predict)    
-predict
 - [ifs](#sc-ifs)   
-feature selection
 - [hpo](#sc-hpo)    
-hyper-parameter optimization
+- [split](#sc-split)
 
 
 Installation
@@ -37,27 +29,34 @@ $ pip install git+https://github.com/huang-sh/raa-assess.git@dev
 Function
 ------------
 ### <a name="sc-view">view</a>
-用来查看指定type, size的约化方案。使用参数：
-- --type 指定type。可以多个type, 如：--type 1 2 3 或者 --type 1-3 。表示选择type 1,2,3
-- --size 和type类似
+view reduced amino acid alphabets
+```
+Usage: raatk view [-h] -t {1,2,3,...,73,74} -s {2,3,...,18,19}
 
-示例:
+optional arguments:
+  -h, --help            show this help message and exit
+  -t, --type            type id
+  -s, --size            reduced size
+```
+for example:
 ``` {.sourceCode .bash}
-$ raa view --type 1 2 --size 4 5
+$ raa view -t 1 2 -s 4 5
 type1  4  LVIMC-AGSTP-FYW-EDNQKRH                 BLOSUM50
 type1  5  LVIMC-AGSTP-FYW-EDNQ-KRH                BLOSUM50
 type2  4  ARNDQEGHKPST-C-ILMFYV-W                 BLOSUM40
 type2  5  AGPST-RNDQEHK-C-ILMFYV-W                BLOSUM40
 ```
-第一列是type,第二列是size,第三列是约化方案,第四列是方法。
+
 ### <a name="sc-reduce">reduce</a>
-将氨基酸fasta序列文件进行约化，然后提取序列特征。使用参数：
-- -f 输入序列文件。同一类别的序列占一个文件。
-- -k k-mer，限制了k只能等于1,2,3 
-- -t 选择type,多个type用"-"连接，如1-15表示type1到type15
-- -s 选择size,多个size用"-"连接，如2-16表示size 2到size 16
-- -o 输出约化序列特征保存文件名(不含后缀)，不同k 值以不同后缀表示，如-k 1 2时，-o test 则会生成test_1n, test_2n两个文件夹
-- -p cpu核数，不能大于系统最大核数 
+reduce amino acid sequences
+```
+Usage: raatk reduce [-h] -t {1,2,3,...,73,74} -s {2,3,...,18,19}
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t, --type            type id
+  -s, --size            reduced size
+```
 
 示例：
 ``` {.sourceCode .bash}
