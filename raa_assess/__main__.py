@@ -45,7 +45,6 @@ def sub_reduce(args):
             out = Path(out)
             ul.reduce_to_file(file, aa, out)
         elif type_ and size:
-        elif type_ and size:
             if "-" in type_[0]:
                 start, end = type_[0].split("-")
                 types = map(str, range(int(start), int(end)+1))
