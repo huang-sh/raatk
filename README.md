@@ -1,32 +1,35 @@
-# raa-assess
+# RAATK
 一个命令行软件，用来评估不同约化氨基酸方案。
 
 有以下几个功能：
 - [view](#sc-view)     
-    查看氨基酸约化方案
+view reduced amino acid alphabet
 - [reduce](#sc-reduce)    
-将序列文件进行约化，并进行序列特征提取
+reduce amino acid sequence
+- [extract](#sc-extract)    
+extract sequence feature
 - [eval](#sc-eval)    
-利用约化后的序列特征文件评估不同约化氨基酸方案，评估结果保存在json文件里
+evaluate reduced amino acid alphabets and model
 - [plot](#sc-plot)    
-将json里的评估数据绘制评估图
-- [fs](#sc-fs)   
-指定特征文件进行特征筛选
-- [own](#sc-own)    
-选择自己的约化氨基酸方案进行约化并评估
+visulation
+- [train](#sc-train)    
+train model
+- [predict](#sc-predict)    
+predict
+- [ifs](#sc-ifs)   
+feature selection
+- [hpo](#sc-hpo)    
+hyper-parameter optimization
 
 
 Installation
 ------------
-### Linux 
-先创建一个虚拟环境,用conda（或virtualenv, pipenv等）:
+create a new virtual environment:
 ```{.sourceCode .bash}
 $conda create -n test python=3.6
 $source activate test
 ```
-
-安装 raa-assess, 可以简单地用 pip:
-
+install with pip:
 ``` {.sourceCode .bash}
 $ pip install git+https://github.com/huang-sh/raa-assess.git@dev
 ```
@@ -97,16 +100,4 @@ $ raa plot -f 1n_result.json 2n_result.json -fmt png -o test
 ``` {.sourceCode .bash}
 $ raa fs -f test_1n/type1/6_2n.csv -cv -1 -hpo 1 -fmt jpg
 ```
-### <a name="sc-own">own</a>
-利用不同约化序列文件，评估不同约化氨基酸方案。使用参数：
-- -f 输入序列文件。同一类别的序列占一个文件。
-- -cluster 一个约化方案，如："SWGA-DRHQYNE-KLVIF-C-PM-T"
-- -k 同上
-- -cv 同上
-- -hpo 同上
-- -o 同上
 
-示例：
-``` {.sourceCode .bash}
-$ raa own -f cls1.fa cls2.fa -cluster SWGA-DRHQYNE-KLVIF-C-PM-T -k 1 2 3 -cv -1 -hpo 1 -o my_clster
-```
