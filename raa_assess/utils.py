@@ -116,7 +116,8 @@ def batch_reduce(file, cluster_info, out_dir):
             type_id, size, cluster, _ = item
             aa = [i[0] for i in cluster.split("-")]
             type_n = "".join(["type",str(type_id)])
-            rfile = out_dir / type_n / "-".join([str(size)]+["".join(aa)]) 
+            reduce_name = '-'.join([str(size), "".join(aa)]) + '.txt'
+            rfile = out_dir / type_n / reduce_name
             mkdirs(rfile.parent)
             aa = cluster.split('-')
             future = tpe.submit(reduce_to_file, file, aa, rfile)
