@@ -170,9 +170,9 @@ def sub_ifs(args):
             best_x = x[:, sort_idx[:best_n]]
             best_file =  out + '_best.csv'
             ul.write_array(best_file, y.reshape(-1, 1), best_x)
-            x_arr = np.array(x_tricks[:len(acc_ls)]).reshape(-1, 1)
-            y_arr = np.array(acc_ls).reshape(-1, 1)
-            ul.write_array(out+".csv", y_arr, x_arr)
+            xtricks_arr = np.array(x_tricks[:len(acc_ls)]).reshape(-1, 1)
+            acc_arr = np.array(acc_ls).reshape(-1, 1)
+            ul.write_array(out+".csv", xtricks_arr, acc_arr)
             ul.write_array(out+f"-{best_n}-idx.csv", sort_idx[:best_n])
             
 def sub_plot(args):
