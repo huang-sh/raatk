@@ -1,13 +1,13 @@
 from setuptools import setup
 
-setup(name='raa_assess',
+setup(name='raatk',
     version='0.1',
-    description='reduce amino acid assess',
-    url='https://github.com/huang-sh/raa-assess/',
+    description='reduce amino acid toolkit',
+    url='https://github.com/huang-sh/raatk/',
     author='huangsh',
     author_email='hsh-me@outlook.com',
     license='MIT',
-    packages=['raa_assess'],
+    packages=['raatk'],
     install_requires=[
         'numpy>=1.16.2',
         'matplotlib>=3.0.3',
@@ -17,7 +17,7 @@ setup(name='raa_assess',
         ],
     entry_points={
         'console_scripts': [
-        'raa=raa_assess.__main__:command_parser',
+        'raa=raatk.__main__:command_parser',
             ]
         },
     python_requires=">=3.5",
