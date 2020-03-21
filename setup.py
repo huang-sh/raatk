@@ -10,14 +10,18 @@ setup(name='raatk',
     packages=['raatk'],
     install_requires=[
         'numpy>=1.16.2',
-        'matplotlib>=3.0.3',
-        'scikit-learn>=0.21.2',
+        'matplotlib>=3.1.1',
+        'scikit-learn>=0.22.1',
         'seaborn>=0.9.0',
         
         ],
     entry_points={
         'console_scripts': [
+<<<<<<< HEAD
         'raa=raatk.__main__:command_parser',
+=======
+        'raatk=raa_assess.__main__:command_parser',
+>>>>>>> 2029b60f0bc8dfbdb3edb63e449d554bcff2e610
             ]
         },
     python_requires=">=3.5",
