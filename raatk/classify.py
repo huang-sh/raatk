@@ -15,54 +15,77 @@ from sklearn.preprocessing import Normalizer, LabelEncoder
 from sklearn.metrics import multilabel_confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import auc, roc_curve
 
 
 class Evaluate:
-    def __init__(self, model, x, y):
+    def __init__(self, model, x, y, probability=False):
+        self.probability = probability
         self.model = model
         self.x = x
         self.y = y
-
+        
     def loo(self):
         lo = LeaveOneOut()
         clf = self.model
         X, y = self.x, self.y        
         ss = lo.split(X)
         y_pre_arr = np.zeros(len(y))
+        y_prob_arr = np.zeros(len(y))
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
             y_pre_arr[test_idx] = y_pre
-        metric = self.metrics_(y, y_pre_arr)
-        cm = multilabel_confusion_matrix(y, y_pre_arr)
-        return metric, cm
+            if self.probability:
+                y_prob_arr[test_idx] = clf.predict_proba(x_test)[:,1]
+        self.sub_metric = [self.metrics_(y, y_pre_arr)]
+        self.mcm = [multilabel_confusion_matrix(y, y_pre_arr)]
+        self.cv_eval = None
+        self.y_true = [y]
+        self.y_pre = [y_pre_arr]
+        self.y_prob = [y_prob_arr]
     
     def kfold(self, k):
-        skf = StratifiedKFold(n_splits=k, random_state=1)
+        skf = StratifiedKFold(n_splits=k,)
         ss = skf.split(self.x, self.y)
         clf = self.model
-        all_metrics = 0
         X, y = self.x, self.y
+        metric_ls = []
+        mcm = []
+        y_true_ls = []
+        y_pre_ls = []
+        y_prob_ls = []
         for train_idx, test_idx in ss:
             x_train, y_train = X[train_idx], y[train_idx]
             x_test, y_test = X[test_idx], y[test_idx]
             fit_clf = clf.fit(x_train, y_train)
             y_true, y_pre = y_test, fit_clf.predict(x_test)
-            metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
-            all_metrics = np.add(all_metrics, metric)
-        k_mean_metric = all_metrics / k
-        return k_mean_metric
+            sub_cm = multilabel_confusion_matrix(y_true, y_pre)
+            mcm.append(sub_cm)
+            y_true_ls.append(y_true)
+            y_pre_ls.append(y_pre)
+            sub_metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
+            metric_ls.append(sub_metric)
+            if self.probability:
+                y_prob = fit_clf.predict_proba(x_test)[:, 1]
+                y_prob_ls.append(y_prob)
+             ## self.mcm=[]; self.mcm.append(sub_cm)为啥不行？？？ 
+        # self.metric = np.mean(metric_ls, axis=0)
+        self.mcm = mcm
+        self.sub_metric = metric_ls
+        self.y_true = y_true_ls
+        self.y_pre = y_pre_ls
+        self.y_prob = y_prob_ls
 
     def holdout(self, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, shuffle=True,
-                                                random_state=1, test_size=test_size)
+        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=test_size)
         fit_clf = self.model.fit(x_train, y_train)
         y_true, y_pre = y_test, fit_clf.predict(x_test)
-        metric = self.metrics_(y_true, y_pre)
-        cm = multilabel_confusion_matrix(y_true, y_pre)
-        return metric, cm
+        self.sub_metric = [self.metrics_(y_true, y_pre)]
+        self.mcm = [multilabel_confusion_matrix(y_true, y_pre)]
+        # self.fpr_tpr_auc_cm(y, y_pre)
 
     def metrics_(self, y_true, y_pre):
         le = LabelEncoder()
@@ -81,61 +104,41 @@ class Evaluate:
         sp = tn / (tn + fp) # specificity
         ppv = tp / (tp + fp) # presision
         acc = (tp + tn) / (tp + tn + fp + fn)
-        mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn*fp)*(tn+fn))
-        return acc, sn, sp, ppv, mcc
-        
+        mcc = (tp * tn -fp * fn) / np.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
+        return [acc, sn, sp, ppv, mcc]
+
+    def get_eval_idx(self):
+        # acc, sn, sp, ppv, mcc = self.metric 
+        oa = sum([sum(i[:, 1, 1]) for i in self.mcm]) / sum([len(i) for i in self.y_true])
+        metric_dic = {'y_true': self.y_true, "y_pre": self.y_pre, 'y_prob': self.y_prob,
+                     "mcm":self.mcm, "sub_metric": self.sub_metric, 'OA': oa}
+        return metric_dic
+
+    def fpr_tpr_auc_cm(self, y, y_pre):
+        self.fpr, self.tpr, self.auc, self.mcm = [], [], [], []
+        self.y, self.y_pre = [], []
+        fpr, tpr, _ = roc_curve(y, y_pre)
+        self.fpr.append(fpr)
+        self.tpr.append(tpr)
+        self.auc.append(auc(fpr, tpr))
+        mcm = multilabel_confusion_matrix(y, y_pre)
+        self.mcm.append(mcm)
+        self.y.append(y)
+        self.y_pre.append(y_pre)
 
 class SvmClassifier:
 
-    def __init__(self, param_grid=None, kernel='rbf', C=1, gamma=0.1, cv=5,
-                 grid_search=True, ):
-        self.cv = cv
-        self.param_grid = param_grid if param_grid else {}
-        self.is_grid_search = grid_search
-        self.clf = SVC(class_weight='balanced', probability=True,)  # cache_size=500
-        if self.is_grid_search:
-            self._check_param_grid(self.param_grid)
-        else:
-            self.C = C
-            self.gamma = gamma
-            self.kernel = kernel
+    def __init__(self, kernel='rbf', C=1, gamma=0.1, cv=5):
+        self.C = C
+        self.gamma = gamma
+        self.kernel = kernel
+        self.clf = SVC(class_weight='balanced', probability=True,
+                        C=1.0, kernel='rbf', gamma='scale',)  # cache_size=500
 
     def train(self, x_train, y_train):
-        if self.is_grid_search:
-            svm = self.grid_search(x_train, y_train)
-        else:
-            svm = self.clf.fit(x_train, y_train)
+        svm = self.clf.set_params(C=self.C, gamma=self.gamma)
+        svm = self.clf.fit(x_train, y_train)
         return svm
-
-    def grid_search(self, x_train, y_train):
-        pipe = Pipeline([
-            ('classify', self.clf)
-        ])
-        grid = GridSearchCV(pipe, cv=5, n_jobs=-1, param_grid=self.param_grid, iid=True)
-        x_train, _, y_train, _ = train_test_split(x_train, y_train, test_size=0.4, random_state=1, shuffle=True)  #
-        clf = grid.fit(x_train, y_train)
-        C, gamma = clf.best_params_['classify__C'], clf.best_params_['classify__gamma'],
-        self.best_score = clf.best_score_
-        return clf.best_estimator_
-
-    def _check_param_grid(self, param_grid):
-        kernel = param_grid.get('kernel', 'rbf')
-        C_start = param_grid.get('C_start', None)
-        C_end = param_grid.get('C_end', None)
-        g_start = param_grid.get('g_start', None)
-        g_end = param_grid.get('g_end', None)
-        param_ls = [C_start, C_end, g_start, g_end]
-        if all([1 if i is not None else 0 for i in param_ls]):
-            C_range = np.logspace(C_start, C_end, C_end - C_start + 1, base=2)
-            gamma_range = np.logspace(g_start, g_end, g_end - g_end + 1, base=2)
-            self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
-        else:
-            print('lost parmameters, will use default parameters ')
-            C_range = np.logspace(-5, 15, 21, base=2)  # 21
-            gamma_range = np.logspace(-15, 3, 19, base=2)  # 19
-            # self.param_grid = [{'kernel': [kernel], 'C': C_range, 'gamma': gamma_range}]
-            self.param_grid = [{'classify__kernel': [kernel], 'classify__C': C_range, 'classify__gamma': gamma_range}]
-
 
 class KnnClassifier:
 

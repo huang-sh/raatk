@@ -1,91 +1,109 @@
 import os
-import json
+from pathlib import Path
 from functools import partial
 from concurrent import futures
 
+import joblib
 import numpy as np
+from joblib import Parallel, delayed
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.preprocessing import Normalizer
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
-from . import classify as al
-from . import utils as ul
+try:
+    from . import classify as al
+    from . import utils as ul
+except ImportError:
+    import classify as al
+    import utils as ul
+ 
+
+np.seterr(all='ignore')
 
 
-def model_hpo(x, y):
-    model = al.SvmClassifier()
-    clf = model.train(x, y)
-    return clf
+def grid_search(x, y, param_grid):
+    grid = GridSearchCV(SVC(random_state=1), cv=5, n_jobs=-1, param_grid=param_grid)
+    clf = grid.fit(x, y)
+    C, gamma = clf.best_params_['C'], clf.best_params_['gamma']
+    return C, gamma
     
-def evaluate(clf, x, y, cv=-1, **kwargs):
-    evalor = al.Evaluate(clf, x, y)
+def train(x, y, C, gamma, probability=False):
+    svc = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1, probability=probability)
+    model = svc.fit(x, y)
+    return model
+
+def save_model(model, file_path):
+    joblib.dump(model, file_path)
+
+def batch_train(in_dir, out_dir, C, gamma, n_job):
+    def process_func(file, C, gamma):
+        x, y = ul.load_data(file, normal=True)
+        model = train(x, y, C, gamma)
+        return model
+    train_func = partial(process_func, C=C, gamma=gamma)
+    dirs = Path(in_dir)
+    out_dir = Path(out_dir)
+    with Parallel(n_jobs=n_job) as train_pa, Parallel(n_jobs=int(n_job/2),
+                                                       backend='threading') as save_pa:
+        for type_ in dirs.iterdir():
+            models = train_pa(delayed(train_func)(file) for file in type_.iterdir())
+            type_name = type_.name
+            type_dir = out_dir / type_name
+            type_dir.mkdir(exist_ok=True)
+            save_pa(delayed(save_model)(m, type_dir/ f.stem) for m,f in zip(models, type_.iterdir()))
+
+def predict(x, model):
+    y_pred = model.predict(x)
+    try:
+        y_prob = model.predict_proba(x)  ## 模型训练 probability=True才能用
+    except:
+        y_prob = None
+    return y_pred, y_prob
+
+# TODO 分离clf？
+def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
+    if clf is None:
+        clf = SVC(class_weight='balanced', C=C, gamma=gamma,
+                 random_state=1, probability=probability)
+    evalor = al.Evaluate(clf, x, y, probability=probability)
     k = int(cv)
     if k == -1:
-        metrics = evalor.loo() ## to do
-    elif int(k):
-        metrics = evalor.kfold(k)
+        evalor.loo() 
+        metric_dic = evalor.get_eval_idx()
+    elif int(k) > 1:
+        evalor.kfold(k)
+        metric_dic = evalor.get_eval_idx()
     else:
-        metrics = evalor.holdout(k)
-    return metrics
+        evalor.holdout(k)
+        metric_dic = evalor.get_eval_idx()
+    return metric_dic 
 
-def process_eval_func(file, cv=-1, hpo=1): # 
-    hpo_x, hpo_y = ul.data_to_hpo(file, hpo=1)
-    clf = model_hpo(hpo_x, hpo_y)
-    eval_x, eval_y = ul.load_normal_data(file)
-    metrics = evaluate(clf, eval_x, eval_y, cv=-1)
-    return metrics
+def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
+    
+    def eval_(file, C, gamma, cv):
+        x, y = ul.load_data(file, normal=True)
+        metric_dic = evaluate(x, y, cv, C=C, gamma=gamma)
+        oa = sum([sum(i[:, 1, 1]) for i in metric_dic['mcm']]) / sum([len(i) for i in metric_dic['y_true']])
+        OA = np.array([oa for _ in np.unique(metric_dic['y_true'][0])])
+        for i in range(len(metric_dic['y_true'])):
+            metric_dic["sub_metric"][i].append(OA)
+        return metric_dic["sub_metric"]
+        
+    eval_func = partial(eval_, cv=cv, C=C, gamma=gamma)
+    all_metric_dic = {}
+    with Parallel(n_jobs=n_job) as eval_pa:
+        for type_ in in_dir.iterdir():
+            metrics_iter = eval_pa(delayed(eval_func)(file) for file in type_.iterdir())
+            all_metric_dic[type_] = [i for i in metrics_iter]
+    return all_metric_dic
 
-def all_eval(folder_n, result_path, n, cv, hpo, cpu):
-    to_do_map = {}
-    result_dic = {}
-    max_work = min(cpu, os.cpu_count())
-    with futures.ProcessPoolExecutor(int(max_work)) as pp:
-        evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
-        for type_dir, file_ls in ul.parse_path(folder_n, filter_format='csv'):
-            for file in file_ls:
-                file_path = os.path.join(type_dir, file)
-                future = pp.submit(evla_func, file_path)
-                type_num = os.path.basename(type_dir)
-                to_do_map[future] = [type_num, f"{file.split('_')[0]}"]
-        else:
-            naa_path = os.path.join(folder_n, f'20_{n}n.csv')
-            if os.path.exists(naa_path):
-                future = pp.submit(evla_func, naa_path)
-                to_do_map[future] = ['natural amino acids', '20s']
-        done_iter = futures.as_completed(to_do_map)
-        for it in done_iter:
-            info = to_do_map[it]
-            metric = it.result()
-            acc, sn, sp, ppv, mcc = metric[0]
-            one_dic = {'sn': sn.tolist(), 'sp': sp.tolist(), 'ppv': ppv.tolist(),
-                      'acc': acc.tolist(), 'mcc': mcc.tolist()}
-            if info[-1] == '20s':
-                naa_dic = one_dic
-            else:
-                Type, size = info
-                result_dic.setdefault(Type, {})
-                result_dic[Type][size] = one_dic
-        for t in result_dic:
-            print(t)
-            result_dic[t]['20'] = naa_dic
-    with open(result_path, 'w', encoding='utf-8') as f:
-        json.dump(result_dic, f)
-
-def al_comparison(file_path,):
-    """
-    :param file_path: feature file path
-    :return:
-    """
-    classifier = {'SVM': al.SvmClassifier, 'RF': al.RfClassifier, 'KNN': al.KnnClassifier}
-    result_dic = {}
-    for clf in classifier:
-        model = drill(classifier[clf], file_path)
-        metrics, auc = evaluate(model, file_path)
-        result_dic[clf] = (*metrics[5:], auc) # sn, sp, presision, acc, mcc, fpr, tpr, auc
-    return result_dic
-
-def feature_select(feature_file, cv=-1, hpo=1):
-    X, y = ul.load_normal_data(feature_file)
+def feature_select(x, y, C, gamma, step, cv, n_jobs):
+    scaler = Normalizer()
+    scaler_ft = partial(scaler.fit_transform, y=y)
     selector = VarianceThreshold()
-    new_x = selector.fit_transform(X)
+    new_x = selector.fit_transform(x)
     score_idx = selector.get_support(indices=True)
     sb = SelectKBest(k='all')
     new_data = sb.fit_transform(new_x, y)
@@ -93,33 +111,14 @@ def feature_select(feature_file, cv=-1, hpo=1):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    with futures.ProcessPoolExecutor() as pp:
-        to_do_map = {}
-        evla_func = partial(process_eval_func, cv=cv, hpo=hpo)
-        for i, idx in enumerate(feature_idx):
-            index = feature_idx[:i+1]
-            x = X[:, index]
-            print(x.shape)
-            future = pp.submit(evla_func, (x, y))
-            to_do_map[future] = [i+1, rank_score[i]]
-        done_iter = futures.as_completed(to_do_map)
-        acc_ls = []
-        for it in done_iter:
-            idx, score = to_do_map[it]
-            acc, *_ = it.result()[0]
-            acc_ls.append(acc[0])
-        acc_ls.sort()
-    return acc_ls
-
-def feature_mix(files, cv=-1, hpo=1):
-    data_ls = [np.genfromtxt(file, delimiter=',')[1:] for file in files]
-    mix_data = np.hstack(data_ls)
-    x = mix_data[:, 1:]
-    y = mix_data[:, 0]
-    acc_ls = feature_select((x, y), cv=-1, hpo=1)
-    return acc_ls
-
-def own_func(file_ls, feature_file, cluster, n):
-    ul.one_file(file_ls, feature_file, cluster, n, idx=len(cluster))
-    metrics, cm = process_eval_func(feature_file, cv=-1, hpo=1)
-    return metrics, cm
+    evla_func =  partial(evaluate, y=y, C=C, gamma=gamma, cv=cv)
+    feature_len = len(feature_idx)
+    feature_len // step
+    if feature_len // step * step == feature_len:
+        step_num = feature_len // step + 1
+    else:
+        step_num = feature_len // step + 2
+    result_ls = Parallel(n_jobs=n_jobs)(
+        delayed(evla_func)(
+            scaler_ft(x[:, feature_idx[:i*step]])) for i in range(1, step_num))
+    return result_ls, feature_idx
