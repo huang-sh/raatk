@@ -4,7 +4,7 @@ A python-based reduce amino acid toolkit of machine learning for protein-depende
 Installation
 ------------
 ```
-$ pip install raatk==1.0.0
+$ pip install raatk
 ```
 
 or
