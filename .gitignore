@@ -1,4 +1,6 @@
 *.csv
 *.txt
 *.pyc
-isp/*
+dist/*
+build/*
+raatk.egg-info/*
