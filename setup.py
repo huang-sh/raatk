@@ -17,11 +17,7 @@ setup(name='raatk',
         ],
     entry_points={
         'console_scripts': [
-<<<<<<< HEAD
         'raa=raatk.__main__:command_parser',
-=======
-        'raatk=raa_assess.__main__:command_parser',
->>>>>>> 2029b60f0bc8dfbdb3edb63e449d554bcff2e610
             ]
         },
     python_requires=">=3.5",
