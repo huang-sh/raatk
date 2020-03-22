@@ -209,17 +209,12 @@ def eval_plot(result_dic, out, fmt, filter_num=8):
     scores, types = dic2array(result_dic, key=key)
     f_scores, f_types = filter_type(scores, types, filter_num=filter_num)
     
-    annot_size, tick_size, label_size = heatmap_font_size(scores.shape[1])
-    f_annot_size, f_tick_size, f_label_size = heatmap_font_size(f_scores.shape[1])
-    font_size = {"annot_size": annot_size, "tick_size": tick_size, "label_size": label_size}
-    f_font_size = {"annot_size": f_annot_size, "tick_size": f_tick_size, "label_size": f_label_size}
-
     heatmap_path = out / f'{key}_heatmap.{fmt}'
     txt_path = out / f'{key}_heatmap.csv'
     heatmap_txt(scores.T, types, txt_path)
-    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path, **font_size)
+    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path)
     f_heatmap_path = out / f'f{filter_num}_{key}_heatmap.{fmt}'
-    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path, **f_font_size)
+    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path)
     
     f_scores_arr = f_scores[f_scores > 0]
     size_arr = np.array([np.arange(2, 21)] * f_scores.shape[0])[f_scores > 0]

@@ -60,20 +60,17 @@ def p_comparison_type(diff_size, same_size, types_label, out):
 
 # TODO
 def p_acc_heat(data, vmin, vmax, xticklabels, out, **kwargs):
-    annot_size = kwargs.get("annot_size", 2)
-    tick_size = kwargs.get("tick_size", 3)
-    label_size = kwargs.get("label_size", 4)
     mask = data <= 0
+    sns.set(font_scale=0.3)
     ax = sns.heatmap(data*100, vmin=vmin*100, vmax=vmax*100, cmap='RdYlGn_r', 
                       mask=mask, annot=True, fmt=".1f", robust=True,
-                      annot_kws={"color": "black", "fontsize": annot_size}, 
-                      xticklabels=True)
+                      annot_kws={"color": "black"}, xticklabels=True)
     ax.set_ylim([0, 19])
     ax.set_xlim([0, len(xticklabels)])
-    ax.set_xticklabels(xticklabels, fontsize=tick_size, rotation=45, ha="center",va="center")
-    ax.set_yticklabels(range(2,21), fontsize=tick_size)
-    ax.set_xlabel('Type', fontsize=label_size)
-    ax.set_ylabel('Cluster Size', fontsize=label_size)
+    ax.set_xticklabels(xticklabels, rotation=45, ha="center",va="center")
+    ax.set_yticklabels(range(2,21))
+    ax.set_xlabel('Type')
+    ax.set_ylabel('Cluster Size')
     plt.savefig(out, dpi=1000, bbox_inches="tight")
     plt.close()
 
