@@ -1,7 +1,8 @@
 from setuptools import setup
+from raatk.__init__ import __version__
 
 setup(name='raatk',
-    version='0.1',
+    version=__version__,
     description='reduce amino acid toolkit',
     url='https://github.com/huang-sh/raatk/',
     author='huangsh',
@@ -17,7 +18,7 @@ setup(name='raatk',
         ],
     entry_points={
         'console_scripts': [
-        'raa=raatk.__main__:command_parser',
+        'raatk=raatk.__main__:command_parser',
             ]
         },
     python_requires=">=3.5",
