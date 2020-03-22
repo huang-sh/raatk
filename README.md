@@ -3,17 +3,18 @@ A python-based reduce amino acid toolkit of machine learning for protein-depende
 
 Installation
 ------------
-create a new virtual environment:
-```{.sourceCode .bash}
-$conda create -n test python=3.6
-$source activate test
 ```
-install
-``` {.sourceCode .bash}
-$ pip install git+https://github.com/huang-sh/raatk.git@dev -U
+$ pip install raatk==1.0.0
+```
+
+or
+
+``` 
+$ pip install git+https://github.com/huang-sh/raatk.git@master -U
 ```
  Function
  ------------
+
 - [view reduced amio acid alphabet](https://github.com/huang-sh/raatk/wiki#view)
 - [reduce amino acid sequence](https://github.com/huang-sh/raatk/wiki#reduce)
 - [extract sequence feature](https://github.com/huang-sh/raatk/wiki#extract)    
