@@ -31,7 +31,19 @@ def sub_view(args):
         tpi, size, cluster, method = item
         info = f"type{tpi:<3}{size:<3}{cluster:<40}{method}"
         print(info)
-    
+
+def parse_view(args, sub_parser):
+    parser_v = sub_parser.add_parser('view', add_help=False, prog='raatk view',
+                         usage='%(prog)s -t TYPE {1,2,3,...,73,74} -s SIZE {2,3,...,18,19}')
+    parser_v.add_argument('-h', '--help', action='help')
+    parser_v.add_argument('-t', '--type', nargs='+', type=int, required=True, 
+                          choices=list([i for i in range(1, 75)]), help='type id')
+    parser_v.add_argument('-s', '--size', nargs='+', type=int, required=True, 
+                          choices=list([i for i in range(2, 20)]), help='reduce size')
+    parser_v.set_defaults(func=sub_view)
+    view_args = parser_v.parse_args(args)
+    view_args.func(view_args)
+
 def sub_reduce(args):
     ul.exist_file(*args.file)
     cluster, type_, size = args.cluster, args.type, args.size
@@ -64,7 +76,20 @@ def sub_reduce(args):
                 naa_dir.mkdir(exist_ok=True)
                 import shutil
                 shutil.copyfile(file, naa_dir / "20-ACDEFGHIKLMNPQRSTVWY.txt")
-                
+              
+def parse_reduce(args, sub_parser):
+    parser_r = sub_parser.add_parser('reduce', add_help=False, prog='raatk reduce')
+    parser_r.add_argument('-h', '--help', action='help')
+    parser_r.add_argument('file', nargs='+', help='fasta file paths')
+    parser_r.add_argument('-t', '--type', nargs='+', help='type id')
+    parser_r.add_argument('-s', '--size', nargs='+', help='reduce size')
+    parser_r.add_argument('-c', '--cluster', help='customized cluster')
+    parser_r.add_argument('-naa', action='store_true', help='natural amino acid')
+    parser_r.add_argument('-o', '--output', nargs='+', help='output file or directory')
+    parser_r.set_defaults(func=sub_reduce)
+    reduce_args = parser_r.parse_args(args)
+    reduce_args.func(reduce_args)
+
 def sub_extract(args):
     k, gap, lam, n_jobs = args.kmer, args.gap, args.lam, args.process
     if args.directory:
@@ -95,12 +120,44 @@ def sub_extract(args):
         for idx, o in enumerate(args.output):
             ul.write_array(Path(o), xy_ls[idx])
 
+def parse_extract(args, sub_parser):
+    parser_ex = sub_parser.add_parser('extract', add_help=False, prog='raatk extract')
+    parser_ex.add_argument('-h', '--help', action='help')
+    parser_ex.add_argument('file', nargs='+', help='fasta files')
+    parser_ex.add_argument('-d', '--directory', action='store_true', help='feature directory')
+    parser_ex.add_argument('-k', '--kmer', type=int, choices=[1,2,3], 
+                          required=True, help='K-tuple or k-mer value')
+    parser_ex.add_argument('-g', '--gap', type=int, default=0, help='gap value')
+    parser_ex.add_argument('-l', '--lam', type=int, default=0, 
+                          help='lambda-correlation value')
+    parser_ex.add_argument('-raa', help='reduced amino acid cluster', default="ACDEFGHIKLMNPQRSTVWY")
+    parser_ex.add_argument('-idx', '--index', default=None, help='feature index')
+    parser_ex.add_argument('-m', '--merge', action='store_true', help='merge feature files into one')
+    parser_ex.add_argument('-o', '--output', nargs='+', required=True, help='output directory')
+    parser_ex.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=1, help='cpu number')
+    parser_ex.add_argument('--label-f', action='store_false', help='feature label')
+    parser_ex.set_defaults(func=sub_extract)
+    extract_args = parser_ex.parse_args(args)
+    extract_args.func(extract_args)
 
 def sub_hpo(args):
     params = ul.param_grid(args.C, args.gamma)
     x, y = ul.load_data(args.file, normal=True)
     best_c, best_gamma = cp.grid_search(x, y, params)
     print("C: %s, gamma: %s" % (best_c, best_gamma))
+
+def parse_hpo(args, sub_parser):
+    parser = sub_parser.add_parser('hpo', add_help=False, prog='raatk hpo')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='feature file for hpyper-parameter optimization')
+    parser.add_argument('-c', '--C',  nargs='+', required=True, type=int,
+                            help='regularization parameter value range [start, stop, [num]]')
+    parser.add_argument('-g', '--gamma', nargs='+', required=True, type=int,
+                            help='Kernel coefficient value range [start, stop, [num]]')
+    parser.set_defaults(func=sub_hpo)
+    hpo_args = parser.parse_args(args)
+    hpo_args.func(hpo_args)
 
 def sub_train(args):
     c, g = args.C, args.gamma
@@ -114,6 +171,20 @@ def sub_train(args):
         model = cp.train(x, y, c, g, probability=True)
         cp.save_model(model, args.output) 
 
+def parse_train(args, sub_parser):
+    parser = sub_parser.add_parser('train', add_help=False, prog='raatk hpo')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='feature file to train')
+    parser.add_argument('-d', '--directory', action='store_true', help='feature directory to train')
+    parser.add_argument('-o', '--output',required=True, help='output directory')
+    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
+    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
+    parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=1, help='cpu number')
+    parser.set_defaults(func=sub_train)
+    train_args = parser.parse_args(args)
+    train_args.func(train_args)
+
 def sub_predict(args):
     x, _ = ul.load_data(args.file, label_exist=False, normal=True)
     model = ul.load_model(args.model)
@@ -122,7 +193,17 @@ def sub_predict(args):
         ul.write_array(args.output, y_pred.reshape(-1,1))
     else:
         ul.write_array(args.output, y_pred.reshape(-1,1), y_prob)
-    
+
+def parse_predict(args, sub_parser):
+    parser = sub_parser.add_parser('predict', add_help=False, prog='raatk predict')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='feature file to predict')
+    parser.add_argument('-m', '--model', required=True, help='model to predict')
+    parser.add_argument('-o', '--output', required=True, help='output directory')
+    parser.set_defaults(func=sub_predict)
+    predict_args = parser.parse_args(args)
+    predict_args.func(predict_args)
+
 def sub_eval(args):
     c, g, cv = args.C, args.gamma, args.cv
     if args.directory:
@@ -136,27 +217,44 @@ def sub_eval(args):
         ul.save_report(metric_dic, args.output + '.txt')
         ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
 
+def parse_eval(args, sub_parser):
+    parser = sub_parser.add_parser('eval', add_help=False, prog='raatk eval')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='feature file to evaluate')
+    parser.add_argument('-d', '--directory', action='store_true', help='feature directory to evaluate')
+    parser.add_argument('-o', '--output', required=True, help='output directory')
+    parser.add_argument('-cv', type=float, default=-1, help='cross validation fold')
+    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
+    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
+    parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=int(os.cpu_count()/2), help='cpu numbers')
+    parser.set_defaults(func=sub_eval)
+    eval_args = parser.parse_args(args)
+    eval_args.func(eval_args)
+
+
 def sub_roc(args):
     model = ul.load_model(args.model)
     model.set_params(probability=True)
     x, y = ul.load_data(args.file, normal=True)
     ul.roc_eval(x, y, model, args.output)
 
+def parse_roc(args, sub_parser):
+    parser = sub_parser.add_parser('roc', add_help=False, prog='raatk roc')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='feature file for roc')
+    parser.add_argument('-m', '--model', required=True, help='model')
+    parser.add_argument('-o', '--output', required=True, help='output directory')
+    parser.set_defaults(func=sub_roc)
+    roc_args = parser.parse_args(args)
+    roc_args.func(roc_args)
+
+
 def sub_ifs(args):
     ul.exist_file(*args.file)
     C, gamma, step, cv, n_jobs = args.C, args.gamma, args.step, args.cv, args.process
     if args.mix:
         pass
-#         x, y = ul.feature_mix(args.file)
-#         noraml_x, noraml_y = ul.load_data((x, y))
-#         result_ls = cp.feature_select(noraml_x, noraml_y, C, gamma, step, cv, n_jobs)
-#         x_tricks = [i for i in range(0, x.shape[1], args.step)]
-#         x_tricks.append(x.shape[1])
-#         acc_ls = [0] + [i[0][0][0] for i in result_ls]
-#         ul.save_y(args.output, x_tricks, acc_ls)
-#         max_acc = max(acc_ls)
-#         best_n = acc_ls.index(max_acc) * step
-#         draw.p_fs(x_tricks, acc_ls, args.output[0]+'.png', max_acc=max_acc, best_n=best_n)
     else:
         for file, out in zip(args.file, args.output): 
             x, y = ul.load_data(file)
@@ -175,15 +273,53 @@ def sub_ifs(args):
             ul.write_array(out+".csv", xtricks_arr, acc_arr)
             ul.write_array(out+f"-{best_n}-idx.csv", sort_idx[:best_n])
             
+def parse_ifs(args, sub_parser):
+    parser = sub_parser.add_parser('ifs', add_help=False, prog='raatk ifs')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', nargs='+', help='feature file')
+    parser.add_argument('-s', '--step', default=10, type=int, help='feature file')
+    parser.add_argument('-o', '--output', nargs='+', required=True, help='output folder')
+    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
+    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
+    parser.add_argument('-cv', '--cv', type=float, default=-1, help='cross validation fold')
+    parser.add_argument('-mix', action='store_true', help='feature mix')
+    parser.add_argument('-p', '--process', type=int, choices=list([i for i in range(1, os.cpu_count())]),
+                                 default=int(os.cpu_count()/2), help='cpu core number')
+    parser.set_defaults(func=sub_ifs)
+    ifs_args = parser.parse_args(args)
+    ifs_args.func(ifs_args)
+
 def sub_plot(args):
     ul.mkdirs(args.outdir)
     with open(args.file, 'r') as f:
         re_dic = json.load(f)
         ul.eval_plot(re_dic, Path(args.outdir), fmt=args.format)
 
+def parse_plot(args, sub_parser):
+    parser = sub_parser.add_parser('plot', add_help=False, prog='raatk plot')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='the result json file')
+    parser.add_argument('-fmt', '--format', default="png", help='figure format')
+    parser.add_argument('-o', '--outdir', required=True, help='output directory')
+    parser.set_defaults(func=sub_plot)
+    plot_args = parser.parse_args(args)
+    plot_args.func(plot_args)
+
 def sub_merge(args):
     mix_data = ul.merge_feature_file(args.label, args.file)
     ul.write_array(args.output, mix_data)
+
+
+def parse_merge(args, sub_parser):
+    parser = sub_parser.add_parser('merge', add_help=False, prog='raatk merge')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', nargs='+', help='file paths')
+    parser.add_argument('-l', '--label', nargs='+', type=int, help='file format')
+    parser.add_argument('-o', '--output', help='output file')
+    parser.set_defaults(func=sub_merge)
+    merge_args = parser.parse_args(args)
+    merge_args.func(merge_args)
+
 
 def sub_split(args):
     ts = args.testsize
@@ -194,131 +330,67 @@ def sub_split(args):
     else:
         print("error")
 
+def parse_split(args, sub_parser):
+    parser = sub_parser.add_parser('split', add_help=False, prog='raatk split')
+    parser.add_argument('-h', '--help', action='help')
+    parser.add_argument('file', help='file path')
+    parser.add_argument('-ts', '--testsize', type=float, help='test size')
+    parser.add_argument('-o', '--output', help='output file')
+    parser.set_defaults(func=sub_split)
+    split_args = parser.parse_args(args)
+    split_args.func(split_args)
+
 # TODO
 def sub_transfer(args):
     pass
+
+def parse_transfer(args, sub_parser):
+    parser = sub_parser.add_parser('transfer', add_help=False, prog='raatk transfer')
+    parser.add_argument('-h', '--help', action='help')
+    parser.set_defaults(func=sub_transfer)
+    transfer_args = parser.parse_args(args)
+    transfer_args.func(transfer_args)
+
 
 class MyArgumentParser(argparse.ArgumentParser):
     def convert_arg_line_to_args(self, arg_line):
         return arg_line.split()
  
+
 def command_parser():
-    parser = MyArgumentParser(description='reduce amino acids toolkit', fromfile_prefix_chars='@')
+    parser = MyArgumentParser(description='reduce amino acids toolkit', fromfile_prefix_chars='@', conflict_handler='resolve')
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    parser_v = subparsers.add_parser('view', help='view the reduce amino acids scheme')
-    parser_v.add_argument('-t', '--type', nargs='+', type=int, required=True, 
-                          choices=list([i for i in range(1, 75)]),help='type id')
-    parser_v.add_argument('-s', '--size', nargs='+', type=int, required=True, 
-                          choices=list([i for i in range(2, 20)]), help='reduce size')
-    parser_v.set_defaults(func=sub_view)
+    parser_v = subparsers.add_parser('view', add_help=False, help='view reduced amino acids alphabet')
+    parser_v.set_defaults(func=parse_view)
+    parser_r = subparsers.add_parser('reduce', add_help=False, help='reduce amino acid sequence')
+    parser_r.set_defaults(func=parse_reduce)
+    parser_ex = subparsers.add_parser('extract', add_help=False, help='extract sequence feature')
+    parser_ex.set_defaults(func=parse_extract)
+    parser_hpo = subparsers.add_parser('hpo', add_help=False, help='hpyper-parameter optimization')
+    parser_hpo.set_defaults(func=parse_hpo)
+    parser_t = subparsers.add_parser('train', add_help=False, help='train model')
+    parser_t.set_defaults(func=parse_train)
+    parser_p = subparsers.add_parser('predict', add_help=False, help='predict data')
+    parser_p.set_defaults(func=parse_predict)
+    parser_ev = subparsers.add_parser('eval', add_help=False, help='evaluate model')
+    parser_ev.set_defaults(func=parse_eval)
+    parser_roc = subparsers.add_parser('roc', add_help=False, help='roc curve evaluation')
+    parser_roc.set_defaults(func=parse_roc)
+    parser_f = subparsers.add_parser("ifs", add_help=False, help='incremental feature selction using ANOVA')
+    parser_f.set_defaults(func=parse_ifs)
+    parser_p = subparsers.add_parser("plot", add_help=False, help='visualization of evaluation result')
+    parser_p.set_defaults(func=parse_plot) 
+    parser_m = subparsers.add_parser('merge', add_help=False, help='merge files into one')
+    parser_m.set_defaults(func=parse_merge)
+    parser_s = subparsers.add_parser('split', add_help=False, help='split file data')
+    parser_s.set_defaults(func=parse_split)
+    parser_tra = subparsers.add_parser('transfer', add_help=False, help='transfer file format')
+    parser_tra.set_defaults(func=parse_transfer)
 
-    parser_r = subparsers.add_parser('reduce', help='reduce sequence')
-    parser_r.add_argument('file', nargs='+', help='fasta file paths')
-    parser_r.add_argument('-t', '--type', nargs='+', help='type id')
-    parser_r.add_argument('-s', '--size', nargs='+', help='reduce size')
-    parser_r.add_argument('-c', '--cluster', help='customized cluster')
-    parser_r.add_argument('-naa', action='store_true', help='natural amino acid')
-    parser_r.add_argument('-o', '--output', nargs='+', help='output file or directory')
-    parser_r.set_defaults(func=sub_reduce)
-
-    parser_ex = subparsers.add_parser('extract', help='extract sequence feature')
-    parser_ex.add_argument('file', nargs='+', help='fasta files')
-    parser_ex.add_argument('-d', '--directory', action='store_true', help='feature directory')
-    parser_ex.add_argument('-k', '--kmer', type=int, choices=[1,2,3], 
-                          required=True, help='K-tuple or k-mer value')
-    parser_ex.add_argument('-g', '--gap', type=int, default=0, help='gap value')
-    parser_ex.add_argument('-l', '--lam', type=int, default=0, 
-                          help='lambda-correlation value')
-    parser_ex.add_argument('-raa', help='reduced amino acid cluster', default="ACDEFGHIKLMNPQRSTVWY")
-    parser_ex.add_argument('-idx', '--index', default=None, help='feature index')
-    parser_ex.add_argument('-m', '--merge', action='store_true', help='merge feature files into one')
-    parser_ex.add_argument('-o', '--output', nargs='+', required=True, help='output directory')
-    parser_ex.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=1, help='cpu number')
-    parser_ex.add_argument('--label-f', action='store_false', help='feature label')
-    parser_ex.set_defaults(func=sub_extract)
-
-    parser_hpo = subparsers.add_parser('hpo', help='hpyper-parameter optimization')
-    parser_hpo.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser_hpo.add_argument('-c', '--C',  nargs='+', required=True, type=int,
-                            help='regularization parameter value range [start, stop, [num]]')
-    parser_hpo.add_argument('-g', '--gamma', nargs='+', required=True, type=int,
-                            help='Kernel coefficient value range [start, stop, [num]]')
-    parser_hpo.set_defaults(func=sub_hpo)
-    
-    parser_t = subparsers.add_parser('train', help='train model')
-    parser_t.add_argument('file', help='feature file to train')
-    parser_t.add_argument('-d', '--directory', action='store_true', help='feature directory to train')
-    parser_t.add_argument('-o', '--output',required=True, help='output directory')
-    parser_t.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser_t.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
-    parser_t.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=1, help='cpu number')
-    parser_t.set_defaults(func=sub_train)
-    
-    parser_p = subparsers.add_parser('predict', help='predict')
-    parser_p.add_argument('file', help='feature file to predict')
-    parser_p.add_argument('-m', '--model', required=True, help='model to predict')
-    parser_p.add_argument('-o', '--output', required=True, help='output directory')
-    parser_p.set_defaults(func=sub_predict)
-
-    parser_ev = subparsers.add_parser('eval', help='evaluate models')
-    parser_ev.add_argument('file', help='feature file to evaluate')
-    parser_ev.add_argument('-d', '--directory', action='store_true', help='feature directory to evaluate')
-    parser_ev.add_argument('-o', '--output', required=True, help='output directory')
-    parser_ev.add_argument('-cv', type=float, default=-1, help='cross validation fold')
-    parser_ev.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser_ev.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
-    parser_ev.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='cpu numbers')
-    parser_ev.set_defaults(func=sub_eval)
-    
-    parser_roc = subparsers.add_parser('roc', help='model roc evaluation')
-    parser_roc.add_argument('file', help='feature file for roc')
-    parser_roc.add_argument('-m', '--model', required=True, help='model')
-    parser_roc.add_argument('-o', '--output', required=True, help='output directory')
-    parser_roc.set_defaults(func=sub_roc)
-
-    parser_f = subparsers.add_parser("ifs", help='incremental feature selction using ANOVA')
-    parser_f.add_argument('file', nargs='+', help='feature file')
-    parser_f.add_argument('-s', '--step', default=10, type=int, help='feature file')
-    parser_f.add_argument('-o', '--output', nargs='+', required=True, help='output folder')
-    parser_f.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser_f.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
-    parser_f.add_argument('-cv', '--cv', type=float, default=-1, help='cross validation fold')
-    parser_f.add_argument('-mix', action='store_true', help='feature mix')
-    parser_f.add_argument('-p', '--process', type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='cpu core number')
-    parser_f.set_defaults(func=sub_ifs)
-    
-    parser_p = subparsers.add_parser("plot", help='plot evaluate result')
-    parser_p.add_argument('file', help='the result json file')
-    parser_p.add_argument('-fmt', '--format', default="png", help='figure format')
-    parser_p.add_argument('-o', '--outdir', required=True, help='output directory')
-    parser_p.set_defaults(func=sub_plot)
-       
-    parser_m = subparsers.add_parser('merge', help='merge files into one')
-    parser_m.add_argument('file', nargs='+', help='file paths')
-    parser_m.add_argument('-l', '--label', nargs='+', type=int, help='file format')
-    parser_m.add_argument('-o', '--output', help='output file')
-    parser_m.set_defaults(func=sub_merge)
-
-    parser_s = subparsers.add_parser('split', help='split file data')
-    parser_s.add_argument('file', help='file path')
-    parser_s.add_argument('-ts', '--testsize', type=float, help='test size')
-    parser_s.add_argument('-o', '--output', help='output file')
-    parser_s.set_defaults(func=sub_split)
-    
-    parser_tra = subparsers.add_parser('transfer', help='transfer file format')
-    parser_tra.add_argument('file', help='file path')
-    parser_tra.add_argument('-fmt', '--format', choices=["fa", "csv"], help='file format')
-    parser_tra.add_argument('-o', '--output', help='output file')
-    parser_tra.set_defaults(func=sub_transfer)
-    
-    args = parser.parse_args()
+    tmp, kown_args = parser.parse_known_args()
     try:
-        args.func(args)
+        tmp.func(kown_args, subparsers)
     except AttributeError:
         pass
 
