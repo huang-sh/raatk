@@ -19,11 +19,11 @@ from sklearn.metrics import auc, roc_curve
 
 
 class Evaluate:
-    def __init__(self, model, x, y, probability=False):
-        self.probability = probability
+    def __init__(self, model, x, y):
         self.model = model
         self.x = x
         self.y = y
+        self.probability = False
         
     def loo(self):
         lo = LeaveOneOut()
@@ -68,11 +68,11 @@ class Evaluate:
             y_pre_ls.append(y_pre)
             sub_metric = self.metrics_(y_true, y_pre) # sn, sp, presision, acc, mcc, fpr, tpr,
             metric_ls.append(sub_metric)
+
             if self.probability:
                 y_prob = fit_clf.predict_proba(x_test)[:, 1]
                 y_prob_ls.append(y_prob)
-             ## self.mcm=[]; self.mcm.append(sub_cm)为啥不行？？？ 
-        # self.metric = np.mean(metric_ls, axis=0)
+
         self.mcm = mcm
         self.sub_metric = metric_ls
         self.y_true = y_true_ls
@@ -126,38 +126,9 @@ class Evaluate:
         self.y.append(y)
         self.y_pre.append(y_pre)
 
-class SvmClassifier:
 
-    def __init__(self, kernel='rbf', C=1, gamma=0.1, cv=5):
-        self.C = C
-        self.gamma = gamma
-        self.kernel = kernel
-        self.clf = SVC(class_weight='balanced', probability=True,
-                        C=1.0, kernel='rbf', gamma='scale',)  # cache_size=500
-
-    def train(self, x_train, y_train):
-        svm = self.clf.set_params(C=self.C, gamma=self.gamma)
-        svm = self.clf.fit(x_train, y_train)
-        return svm
-
-class KnnClassifier:
-
-    def __init__(self, cv=5, n_neighbors=6, ):
-        self.n_neighbors = n_neighbors
-        self.cv = cv
-
-    def train(self, x_train, y_train):
-        clf = KNeighborsClassifier(self.n_neighbors, weights='distance', n_jobs=-1)
-        clf = clf.fit(x_train, y_train)
-        return clf
-
-class RfClassifier:
-
-    def __init__(self, cv=5, n_estimators=30):
-        self.n_neighbors = n_estimators
-        self.cv = cv
-
-    def train(self, x_train, y_train):
-        clf = RandomForestClassifier(n_estimators=30, class_weight='balanced', n_jobs=-1)
-        clf = clf.fit(x_train, y_train)
-        return clf
+svm_params = SVC._get_param_names()
+knn_params = KNeighborsClassifier._get_param_names()
+rf_params = RandomForestClassifier._get_param_names()
+clf_param_names = {'svm': svm_params, 'knn': knn_params, 'rf': rf_params}
+clf_dic = {'svm': SVC, 'knn': KNeighborsClassifier, 'rf': RandomForestClassifier}

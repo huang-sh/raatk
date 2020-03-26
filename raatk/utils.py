@@ -18,9 +18,11 @@ from sklearn.metrics import roc_curve, RocCurveDisplay, auc, plot_roc_curve
 try:
     from . import draw
     from . import feature as fea
+    from .classify import clf_param_names, clf_dic
 except ImportError:
     import draw
     import feature as fea
+    from classify import clf_param_names, clf_dic
 
 
 BASE_PATH = os.path.dirname(__file__)
@@ -212,9 +214,13 @@ def eval_plot(result_dic, out, fmt, filter_num=8):
     heatmap_path = out / f'{key}_heatmap.{fmt}'
     txt_path = out / f'{key}_heatmap.csv'
     heatmap_txt(scores.T, types, txt_path)
-    draw.p_acc_heat(scores.T, 0.6, 1, types, heatmap_path)
+    hmd = scores.T * 100
+    fhmd = f_scores.T * 100
+    vmin = np.min(hmd[hmd>0]) // 10 * 10
+    vmax = np.max(hmd[hmd>0]) // 10 * 10 + 10
+    draw.p_acc_heat(hmd, vmin, vmax, types, heatmap_path)
     f_heatmap_path = out / f'f{filter_num}_{key}_heatmap.{fmt}'
-    draw.p_acc_heat(f_scores.T, 0.6, 1, f_types, f_heatmap_path)
+    draw.p_acc_heat(fhmd, vmin, vmax, f_types, f_heatmap_path)
     
     f_scores_arr = f_scores[f_scores > 0]
     size_arr = np.array([np.arange(2, 21)] * f_scores.shape[0])[f_scores > 0]
@@ -437,43 +443,32 @@ def k_roc_curve_plot(y_true, y_prob, out):
         ax.legend(loc="lower right")
     plt.savefig(out)
 
+def filter_args(kwargs, clf_params):
+    params = *kwargs,
+    target_params = set(params) & set(clf_params)
+    param_kic = {}
+    for p in target_params:
+        if isinstance(kwargs[p], (int, float)):
+            param_kic[p] = kwargs[p]
+        elif kwargs[p].replace(".",'').isnumeric():
+            param_kic[p] = float(kwargs[p])
+        else:
+            param_kic[p] = kwargs[p]    
+    return param_kic
+
+def select_clf(args):
+    kwargs = dict(args._get_kwargs())
+    param_dic = filter_args(kwargs, clf_param_names[args.clf])
+    clf = clf_dic[args.clf](**param_dic)
+    return clf
+
 def exist_file(*file_path):
     for file in file_path:
         f = Path(file)
         if f.is_file():
             pass
         else:
-            print("file not found!")
+            print("File not found!")
             exit()
 
-# 先将就用            
-def heatmap_font_size(types):
-    if types <= 10:
-        annot_size = 4
-        tick_size = 4
-        label_size = 5
-    elif types <= 20:
-        annot_size = 3
-        tick_size = 3
-        label_size = 4     
-    elif types <= 30:
-        annot_size = 2.5
-        tick_size = 2.5
-        label_size = 3.5 
-    elif types <= 40:
-        annot_size = 2.5
-        tick_size = 2.5
-        label_size = 3.5 
-    elif types <= 50:
-        annot_size = 1.5
-        tick_size = 2.5
-        label_size = 3.5 
-    elif types <= 60:
-        annot_size = 1.5
-        tick_size = 2.5
-        label_size = 3.5 
-    else:
-        annot_size = 1
-        tick_size = 2
-        label_size = 3 
-    return annot_size, tick_size, label_size
+

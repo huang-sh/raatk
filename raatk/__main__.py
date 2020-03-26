@@ -20,7 +20,7 @@ try:
 except ImportError:
     import draw
     import utils as ul
-    import compute as cp  
+    import compute as cp
 
 
 def sub_view(args):
@@ -142,6 +142,7 @@ def parse_extract(args, sub_parser):
     extract_args.func(extract_args)
 
 def sub_hpo(args):
+    # a(**dict(args._get_kwargs()))
     params = ul.param_grid(args.C, args.gamma)
     x, y = ul.load_data(args.file, normal=True)
     best_c, best_gamma = cp.grid_search(x, y, params)
@@ -151,36 +152,79 @@ def parse_hpo(args, sub_parser):
     parser = sub_parser.add_parser('hpo', add_help=False, prog='raatk hpo')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser.add_argument('-c', '--C',  nargs='+', required=True, type=int,
+    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rbf', 'knn'],
+                             default='svm', help='classifier selection')
+    parser.add_argument('-jobs','--n_jobs', type=int, help='the number of parallel jobs to run')
+
+    knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
+    knn.add_argument('--n_neighbors', type=int, nargs='+',
+                        help='number of neighbors [start stop step]')
+    knn.add_argument('--weights', choices=['uniform', 'distance'], default=['uniform'], 
+                        nargs='+', help='weight function used in prediction') 
+    knn.add_argument('--algorithm', choices=['auto', 'ball_tree', 'kd_tree', 'brute'], nargs='+',
+                        default=['auto'], help='algorithm used to compute the nearest neighbors')
+    knn.add_argument('--leaf_size', type=int, default=30,
+                        help='leaf size passed to BallTree or KDTree')
+
+    svm = parser.add_argument_group('SVM', description='Parameters for SVM classifier')
+    svm.add_argument('-c', '--C-range',  nargs='+', required=True, type=int,
                             help='regularization parameter value range [start, stop, [num]]')
-    parser.add_argument('-g', '--gamma', nargs='+', required=True, type=int,
+    svm.add_argument('-g', '--gamma-range', nargs='+', required=True, type=int,
                             help='Kernel coefficient value range [start, stop, [num]]')
+    svm.add_argument('--kernel', nargs='+', required=True, choices=['rbf', 'linear'],
+                            help='kernel function')
+    
     parser.set_defaults(func=sub_hpo)
     hpo_args = parser.parse_args(args)
     hpo_args.func(hpo_args)
 
+def clf_parser(parser):
+    svm = parser.add_argument_group('SVM', description='Parameters for SVM classifier')
+    svm.add_argument('-c', '--C', default=1, type=float, help='regularization parameter')
+    svm.add_argument('-g', '--gamma', default='scale', help='kernel coefficient')
+    svm.add_argument('-prob', '--probability', action='store_true', help='kernel coefficient')
+    svm.add_argument('-k', '--kernel', choices=['rbf', 'linear'], default='rbf',
+                            help='specifies the kernel type to be used in the algorithm ')  
+    svm.add_argument('-dfs', '--decision_function_shape', default='ovo', choices=['ovr', 'ovo'], 
+                            help='decision function shape')
+    svm.add_argument('-rs', '--random_state', type=int, default=1, help='random state')
+    knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
+    knn.add_argument('-n', '--n_neighbors', type=int, default=5,
+                        help='number of neighbors to use by default for kneighbors queries')
+    knn.add_argument('-w', '--weights', choices=['uniform', 'distance'], default='uniform', 
+                        help='weight function used in prediction') 
+    knn.add_argument('-al', '--algorithm', choices=['auto', 'ball_tree', 'kd_tree', 'brute'], 
+                        default='auto', help='algorithm used to compute the nearest neighbors')
+    knn.add_argument('-lfs', '--leaf_size', type=int, default=30,
+                        help='leaf size passed to BallTree or KDTree')
+    knn.add_argument('-jobs','--n_jobs', type=int, default=1, 
+                            help='the number of parallel jobs to run for neighbors search')
+    rf = parser.add_argument_group('RF', description='Parameters for random forest classifier') 
+    rf.add_argument('-trees', '--n_estimators', type=int, default=100,
+                        help='the number of trees in the forest')
+    rf.add_argument('-features', '--max_features', default='auto',
+                        help='the number of features to consider when looking for the best split') 
+    knn.add_argument('-jobs','--n_jobs', type=int, default=1, 
+                            help='the number of jobs to run in parallel')
+    rf.add_argument('-rs', '--random_state', type=int, default=1, help='random state')
+    return parser
+
 def sub_train(args):
-    c, g = args.C, args.gamma
-    if args.directory:
-        in_dir = Path(args.file)
-        out_dir = Path(args.output)
-        out_dir.mkdir(exist_ok=True)
-        cp.batch_train(in_dir, out_dir, c, g, args.process)
-    else:
-        x, y = ul.load_data(args.file, normal=True)
-        model = cp.train(x, y, c, g, probability=True)
-        cp.save_model(model, args.output) 
+    clf = ul.select_clf(args)
+    x, y = ul.load_data(args.file, normal=True)
+    cp.train(x, y, clf, args.output)
 
 def parse_train(args, sub_parser):
-    parser = sub_parser.add_parser('train', add_help=False, prog='raatk hpo')
+    parser = sub_parser.add_parser('train', add_help=False, prog='raatk train',
+                                     conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file to train')
-    parser.add_argument('-d', '--directory', action='store_true', help='feature directory to train')
+    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rbf', 'knn'],
+                            default='svm', help='classifier selection')
     parser.add_argument('-o', '--output',required=True, help='output directory')
-    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
-    parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=1, help='cpu number')
+    parser.add_argument('-jobs','--n_jobs', type=int, default=1, 
+                            help='the number of parallel jobs to run')
+    clf_parser(parser)
     parser.set_defaults(func=sub_train)
     train_args = parser.parse_args(args)
     train_args.func(train_args)
@@ -205,37 +249,37 @@ def parse_predict(args, sub_parser):
     predict_args.func(predict_args)
 
 def sub_eval(args):
-    c, g, cv = args.C, args.gamma, args.cv
+    clf = ul.select_clf(args)
     if args.directory:
         out = Path(args.output)
-        all_sub_metric_dic = cp.batch_evaluate(Path(args.file), out, cv, c, g, args.process)
+        all_sub_metric_dic = cp.batch_evaluate(Path(args.file), out,args.cv, clf, args.process)
         result_json = args.output + ".json"
         ul.save_json(all_sub_metric_dic, result_json)
     else:
         x, y = ul.load_data(args.file, normal=True)
-        metric_dic = cp.evaluate(x, y, cv, c, g, probability=True)
+        metric_dic = cp.evaluate(x, y, args.cv, clf)
         ul.save_report(metric_dic, args.output + '.txt')
         ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
 
 def parse_eval(args, sub_parser):
-    parser = sub_parser.add_parser('eval', add_help=False, prog='raatk eval')
+    parser = sub_parser.add_parser('eval', add_help=False, prog='raatk eval',
+                                        conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file to evaluate')
     parser.add_argument('-d', '--directory', action='store_true', help='feature directory to evaluate')
+    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rf', 'knn'],
+                                 default='svm', help='classifier selection')
+    parser.add_argument('-cv', type=int, default=-1, help='cross validation fold')
     parser.add_argument('-o', '--output', required=True, help='output directory')
-    parser.add_argument('-cv', type=float, default=-1, help='cross validation fold')
-    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
     parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='cpu numbers')
+                                 default=int(os.cpu_count()/2), help='cpu numbers')     
+    clf_parser(parser)
     parser.set_defaults(func=sub_eval)
     eval_args = parser.parse_args(args)
     eval_args.func(eval_args)
 
-
 def sub_roc(args):
     model = ul.load_model(args.model)
-    model.set_params(probability=True)
     x, y = ul.load_data(args.file, normal=True)
     ul.roc_eval(x, y, model, args.output)
 
@@ -249,17 +293,17 @@ def parse_roc(args, sub_parser):
     roc_args = parser.parse_args(args)
     roc_args.func(roc_args)
 
-
 def sub_ifs(args):
     ul.exist_file(*args.file)
-    C, gamma, step, cv, n_jobs = args.C, args.gamma, args.step, args.cv, args.process
+    step, cv, n_jobs = args.step, args.cv, args.process
+    clf = ul.select_clf(args)
     if args.mix:
         pass
     else:
         for file, out in zip(args.file, args.output): 
             x, y = ul.load_data(file)
-            result_ls, sort_idx = cp.feature_select(x, y, C, gamma, step, cv, n_jobs)
-            x_tricks = [i for i in range(0, x.shape[1], args.step)]
+            result_ls, sort_idx = cp.feature_select(x, y, step, cv, clf, n_jobs)
+            x_tricks = [i for i in range(0, x.shape[1], step)]
             x_tricks.append(x.shape[1])
             acc_ls = [0] + [i["OA"] for i in result_ls]
             max_acc = max(acc_ls)
@@ -274,17 +318,19 @@ def sub_ifs(args):
             ul.write_array(out+f"-{best_n}-idx.csv", sort_idx[:best_n])
             
 def parse_ifs(args, sub_parser):
-    parser = sub_parser.add_parser('ifs', add_help=False, prog='raatk ifs')
+    parser = sub_parser.add_parser('ifs', add_help=False, prog='raatk ifs',
+                                        conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', nargs='+', help='feature file')
     parser.add_argument('-s', '--step', default=10, type=int, help='feature file')
+    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rf', 'knn'],
+                             default='svm', help='classifier selection')
+    parser.add_argument('-cv', '--cv', type=int, default=5, help='cross validation fold')                             
     parser.add_argument('-o', '--output', nargs='+', required=True, help='output folder')
-    parser.add_argument('-c', '--C', required=True, type=float, help='regularization parameter')
-    parser.add_argument('-g', '--gamma', required=True, type=float, help='Kernel coefficient')
-    parser.add_argument('-cv', '--cv', type=float, default=-1, help='cross validation fold')
     parser.add_argument('-mix', action='store_true', help='feature mix')
-    parser.add_argument('-p', '--process', type=int, choices=list([i for i in range(1, os.cpu_count())]),
+    parser.add_argument('-p', '--process', type=int, choices=range(1, os.cpu_count()),
                                  default=int(os.cpu_count()/2), help='cpu core number')
+    clf_parser(parser)
     parser.set_defaults(func=sub_ifs)
     ifs_args = parser.parse_args(args)
     ifs_args.func(ifs_args)
@@ -300,6 +346,7 @@ def parse_plot(args, sub_parser):
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='the result json file')
     parser.add_argument('-fmt', '--format', default="png", help='figure format')
+    # parser.add_argument('-dpi', default=600, type=int, help='figure format')
     parser.add_argument('-o', '--outdir', required=True, help='output directory')
     parser.set_defaults(func=sub_plot)
     plot_args = parser.parse_args(args)
@@ -308,7 +355,6 @@ def parse_plot(args, sub_parser):
 def sub_merge(args):
     mix_data = ul.merge_feature_file(args.label, args.file)
     ul.write_array(args.output, mix_data)
-
 
 def parse_merge(args, sub_parser):
     parser = sub_parser.add_parser('merge', add_help=False, prog='raatk merge')
@@ -319,7 +365,6 @@ def parse_merge(args, sub_parser):
     parser.set_defaults(func=sub_merge)
     merge_args = parser.parse_args(args)
     merge_args.func(merge_args)
-
 
 def sub_split(args):
     ts = args.testsize
@@ -369,12 +414,12 @@ def command_parser():
     parser_ex.set_defaults(func=parse_extract)
     parser_hpo = subparsers.add_parser('hpo', add_help=False, help='hpyper-parameter optimization')
     parser_hpo.set_defaults(func=parse_hpo)
+    parser_ev = subparsers.add_parser('eval', add_help=False, help='evaluate model')
+    parser_ev.set_defaults(func=parse_eval)    
     parser_t = subparsers.add_parser('train', add_help=False, help='train model')
     parser_t.set_defaults(func=parse_train)
     parser_p = subparsers.add_parser('predict', add_help=False, help='predict data')
     parser_p.set_defaults(func=parse_predict)
-    parser_ev = subparsers.add_parser('eval', add_help=False, help='evaluate model')
-    parser_ev.set_defaults(func=parse_eval)
     parser_roc = subparsers.add_parser('roc', add_help=False, help='roc curve evaluation')
     parser_roc.set_defaults(func=parse_roc)
     parser_f = subparsers.add_parser("ifs", add_help=False, help='incremental feature selction using ANOVA')

@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import Normalizer
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
@@ -29,15 +30,13 @@ def grid_search(x, y, param_grid):
     C, gamma = clf.best_params_['C'], clf.best_params_['gamma']
     return C, gamma
     
-def train(x, y, C, gamma, probability=False):
-    svc = SVC(class_weight='balanced', C=C, gamma=gamma, random_state=1, probability=probability)
-    model = svc.fit(x, y)
-    return model
+def train(x, y, clf, out):
+    model = clf.fit(x, y)
+    joblib.dump(model, out)
 
-def save_model(model, file_path):
-    joblib.dump(model, file_path)
 
 def batch_train(in_dir, out_dir, C, gamma, n_job):
+
     def process_func(file, C, gamma):
         x, y = ul.load_data(file, normal=True)
         model = train(x, y, C, gamma)
@@ -63,11 +62,8 @@ def predict(x, model):
     return y_pred, y_prob
 
 # TODO 分离clf？
-def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
-    if clf is None:
-        clf = SVC(class_weight='balanced', C=C, gamma=gamma,
-                 random_state=1, probability=probability)
-    evalor = al.Evaluate(clf, x, y, probability=probability)
+def evaluate(x, y, cv, clf):
+    evalor = al.Evaluate(clf, x, y)
     k = int(cv)
     if k == -1:
         evalor.loo() 
@@ -80,18 +76,18 @@ def evaluate(x, y, cv, C=None, gamma=None, clf=None, probability=False):
         metric_dic = evalor.get_eval_idx()
     return metric_dic 
 
-def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
+def batch_evaluate(in_dir, out_dir, cv, clf, n_job):
     
-    def eval_(file, C, gamma, cv):
+    def eval_(file, cv, clf):
         x, y = ul.load_data(file, normal=True)
-        metric_dic = evaluate(x, y, cv, C=C, gamma=gamma)
+        metric_dic = evaluate(x, y, cv, clf)
         oa = sum([sum(i[:, 1, 1]) for i in metric_dic['mcm']]) / sum([len(i) for i in metric_dic['y_true']])
         OA = np.array([oa for _ in np.unique(metric_dic['y_true'][0])])
         for i in range(len(metric_dic['y_true'])):
             metric_dic["sub_metric"][i].append(OA)
         return metric_dic["sub_metric"]
         
-    eval_func = partial(eval_, cv=cv, C=C, gamma=gamma)
+    eval_func = partial(eval_, cv=cv, clf=clf)
     all_metric_dic = {}
     with Parallel(n_jobs=n_job) as eval_pa:
         for type_ in in_dir.iterdir():
@@ -99,7 +95,7 @@ def batch_evaluate(in_dir, out_dir, cv, C, gamma, n_job):
             all_metric_dic[type_] = [i for i in metrics_iter]
     return all_metric_dic
 
-def feature_select(x, y, C, gamma, step, cv, n_jobs):
+def feature_select(x, y, step, cv, clf, n_jobs):
     scaler = Normalizer()
     scaler_ft = partial(scaler.fit_transform, y=y)
     selector = VarianceThreshold()
@@ -111,7 +107,7 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
     idx_score = [(i, v) for i, v in zip(score_idx, f_value)]
     rank_score = sorted(idx_score, key=lambda x: x[1], reverse=True)
     feature_idx = [i[0] for i in rank_score]
-    evla_func =  partial(evaluate, y=y, C=C, gamma=gamma, cv=cv)
+    evla_func =  partial(evaluate, y=y, cv=cv, clf=clf)
     feature_len = len(feature_idx)
     feature_len // step
     if feature_len // step * step == feature_len:
@@ -122,3 +118,4 @@ def feature_select(x, y, C, gamma, step, cv, n_jobs):
         delayed(evla_func)(
             scaler_ft(x[:, feature_idx[:i*step]])) for i in range(1, step_num))
     return result_ls, feature_idx
+

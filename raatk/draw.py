@@ -62,7 +62,7 @@ def p_comparison_type(diff_size, same_size, types_label, out):
 def p_acc_heat(data, vmin, vmax, xticklabels, out, **kwargs):
     mask = data <= 0
     sns.set(font_scale=0.3)
-    ax = sns.heatmap(data*100, vmin=vmin*100, vmax=vmax*100, cmap='RdYlGn_r', 
+    ax = sns.heatmap(data, vmin=vmin, vmax=vmax, cmap='RdYlGn_r', 
                       mask=mask, annot=True, fmt=".1f", robust=True,
                       annot_kws={"color": "black"}, xticklabels=True)
     ax.set_ylim([0, 19])
