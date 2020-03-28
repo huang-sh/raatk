@@ -152,8 +152,8 @@ def parse_hpo(args, sub_parser):
     parser = sub_parser.add_parser('hpo', add_help=False, prog='raatk hpo')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rbf', 'knn'],
-                             default='svm', help='classifier selection')
+    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rbf', 'knn'],
+                                    help='classifier selection')
     parser.add_argument('-jobs','--n_jobs', type=int, help='the number of parallel jobs to run')
 
     knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
@@ -187,6 +187,8 @@ def clf_parser(parser):
                             help='specifies the kernel type to be used in the algorithm ')  
     svm.add_argument('-dfs', '--decision_function_shape', default='ovo', choices=['ovr', 'ovo'], 
                             help='decision function shape')
+    svm.add_argument('--class_weight', default='balanced', choices=['balanced'],
+                                help='default: balanced')
     svm.add_argument('-rs', '--random_state', type=int, default=1, help='random state')
     knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
     knn.add_argument('-n', '--n_neighbors', type=int, default=5,
@@ -219,8 +221,8 @@ def parse_train(args, sub_parser):
                                      conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file to train')
-    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rbf', 'knn'],
-                            default='svm', help='classifier selection')
+    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rbf', 'knn'],
+                                help='classifier selection')
     parser.add_argument('-o', '--output',required=True, help='output directory')
     parser.add_argument('-jobs','--n_jobs', type=int, default=1, 
                             help='the number of parallel jobs to run')
@@ -252,14 +254,14 @@ def sub_eval(args):
     clf = ul.select_clf(args)
     if args.directory:
         out = Path(args.output)
-        all_sub_metric_dic = cp.batch_evaluate(Path(args.file), out,args.cv, clf, args.process)
+        all_metric_dic = cp.batch_evaluate(Path(args.file), out,args.cv, clf, args.process)
         result_json = args.output + ".json"
-        ul.save_json(all_sub_metric_dic, result_json)
+        ul.metric_dict2json(all_metric_dic, result_json)
     else:
         x, y = ul.load_data(args.file, normal=True)
         metric_dic = cp.evaluate(x, y, args.cv, clf)
         ul.save_report(metric_dic, args.output + '.txt')
-        ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
+        # ul.k_roc_curve_plot(metric_dic['y_true'], metric_dic['y_prob'], args.output + '.png')       
 
 def parse_eval(args, sub_parser):
     parser = sub_parser.add_parser('eval', add_help=False, prog='raatk eval',
@@ -267,9 +269,9 @@ def parse_eval(args, sub_parser):
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file to evaluate')
     parser.add_argument('-d', '--directory', action='store_true', help='feature directory to evaluate')
-    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rf', 'knn'],
-                                 default='svm', help='classifier selection')
-    parser.add_argument('-cv', type=int, default=-1, help='cross validation fold')
+    parser.add_argument('-clf', '--clf', choices=['svm', 'rf', 'knn'], default='svm', 
+                                help='classifier selection')
+    parser.add_argument('-cv', type=int, default=5, help='cross validation fold')
     parser.add_argument('-o', '--output', required=True, help='output directory')
     parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
                                  default=int(os.cpu_count()/2), help='cpu numbers')     
@@ -323,8 +325,8 @@ def parse_ifs(args, sub_parser):
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', nargs='+', help='feature file')
     parser.add_argument('-s', '--step', default=10, type=int, help='feature file')
-    parser.add_argument('-clf', '--clf', required=True, choices=['svm', 'rf', 'knn'],
-                             default='svm', help='classifier selection')
+    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rf', 'knn'],
+                             help='classifier selection')
     parser.add_argument('-cv', '--cv', type=int, default=5, help='cross validation fold')                             
     parser.add_argument('-o', '--output', nargs='+', required=True, help='output folder')
     parser.add_argument('-mix', action='store_true', help='feature mix')

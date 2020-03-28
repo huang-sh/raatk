@@ -14,11 +14,11 @@ from sklearn.preprocessing import Normalizer
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 
 try:
-    from . import classify as al
     from . import utils as ul
+    from . import metrics as mt
 except ImportError:
-    import classify as al
     import utils as ul
+    import metrics as mt
  
 
 np.seterr(all='ignore')
@@ -61,19 +61,18 @@ def predict(x, model):
         y_prob = None
     return y_pred, y_prob
 
-# TODO 分离clf？
+def cv_predict(clf, x, y, cver, method="predict"):
+    y_pred = cross_val_predict(clf, x, y, cv=cver, method=method)
+    return y_pred
+
 def evaluate(x, y, cv, clf):
-    evalor = al.Evaluate(clf, x, y)
     k = int(cv)
-    if k == -1:
-        evalor.loo() 
-        metric_dic = evalor.get_eval_idx()
+    if k in (-1, 1):
+        metric_dic = mt.loo_metrics(clf, x, y)
     elif int(k) > 1:
-        evalor.kfold(k)
-        metric_dic = evalor.get_eval_idx()
-    else:
-        evalor.holdout(k)
-        metric_dic = evalor.get_eval_idx()
+        metric_dic = mt.cv_metrics(clf, x, y, cv)
+    else:  ## hold out
+        pass
     return metric_dic 
 
 def batch_evaluate(in_dir, out_dir, cv, clf, n_job):
@@ -81,11 +80,7 @@ def batch_evaluate(in_dir, out_dir, cv, clf, n_job):
     def eval_(file, cv, clf):
         x, y = ul.load_data(file, normal=True)
         metric_dic = evaluate(x, y, cv, clf)
-        oa = sum([sum(i[:, 1, 1]) for i in metric_dic['mcm']]) / sum([len(i) for i in metric_dic['y_true']])
-        OA = np.array([oa for _ in np.unique(metric_dic['y_true'][0])])
-        for i in range(len(metric_dic['y_true'])):
-            metric_dic["sub_metric"][i].append(OA)
-        return metric_dic["sub_metric"]
+        return metric_dic
         
     eval_func = partial(eval_, cv=cv, clf=clf)
     all_metric_dic = {}

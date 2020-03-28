@@ -14,21 +14,31 @@ import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve, RocCurveDisplay, auc, plot_roc_curve
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 try:
     from . import draw
     from . import feature as fea
-    from .classify import clf_param_names, clf_dic
 except ImportError:
     import draw
     import feature as fea
-    from classify import clf_param_names, clf_dic
+
 
 
 BASE_PATH = os.path.dirname(__file__)
 RAA_DB = os.path.join(BASE_PATH, 'nr_raa_data.db')
 NAA = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 
        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+
+
+
+svm_params = SVC._get_param_names()
+knn_params = KNeighborsClassifier._get_param_names()
+rf_params = RandomForestClassifier._get_param_names()
+clf_param_names = {'svm': svm_params, 'knn': knn_params, 'rf': rf_params}
+clf_dic = {'svm': SVC, 'knn': KNeighborsClassifier, 'rf': RandomForestClassifier}
 
 
 def check_aa(aa):
@@ -207,7 +217,7 @@ def heatmap_txt(data, types, out):
             fc.writerow(line)
 
 def eval_plot(result_dic, out, fmt, filter_num=8):
-    key = 'OA'
+    key = 'acc'
     scores, types = dic2array(result_dic, key=key)
     f_scores, f_types = filter_type(scores, types, filter_num=filter_num)
     
@@ -314,15 +324,28 @@ def param_grid(c, g):
                     'gamma': gamma_range}]
     return params
     
-def save_json(metric_dic, path):
+def metric_dict2json(all_metric_dic, path):
     result_dic = {}
     naa_metric = {}
-    for type_dir, metric_ls in metric_dic.items():
+    for type_dir, cv_metric_ls in all_metric_dic.items():
         result_dic.setdefault(type_dir.name, {})
-        for size_dir, metrics in zip(type_dir.iterdir(), metric_ls):
-            acc, sn, sp, ppv, mcc, oa = [i.tolist() for i in np.mean(metrics, axis=0)]
-            metric_dic = {'sn': sn, 'sp': sp, 'ppv': ppv,
-                         'acc': acc, 'mcc': mcc, 'OA': oa}
+        for size_dir, cv_metric_dic in zip(type_dir.iterdir(), cv_metric_ls):
+            cv = len(cv_metric_dic)
+            zero_arr = np.zeros(cv)
+            f1_score = zero_arr
+            acc, mcc = zero_arr, zero_arr
+            precision, recall = zero_arr, zero_arr
+            for fold, metric in cv_metric_dic.items():
+                precision = np.add(precision, metric["precision"]) / cv
+                recall = np.add(recall, metric["recall"]) / cv
+                f1_score = np.add(f1_score, metric["f1-score"]) / cv
+                acc = np.add(acc, metric["acc"]) / cv
+                mcc = np.add(mcc, metric["mcc"]) / cv
+            metric_dic = {
+                    'precision': precision.tolist(),
+                    'recall': recall.tolist(), 'mcc': mcc.tolist(),
+                    'acc': acc.tolist(),'f1-score': f1_score.tolist(),
+                    }
             if type_dir.name == "naa":
                 naa_metric = metric_dic
             else:
@@ -349,56 +372,34 @@ TEXT = """
 """
               
 def save_report(metric_dic, report_file):
-    y_true = metric_dic['y_true']
-    y_pre = metric_dic['y_pre']
-    mcm = metric_dic['mcm']
-    sub_metric = metric_dic['sub_metric']
     with open(report_file, "w", encoding="utf-8") as f:
-        for mcm_idx, sub_mcm in enumerate(mcm):
-            cm = confusion_matrix(y_true[mcm_idx], y_pre[mcm_idx])
-            clses = cm.shape[0]
-            col_cls = "".join(([f"{'':<4}"]+[f"{i:<4}" for i in range(clses)]))
-            f.write(col_cls)
+        head = f"     {'tp':^5}{'fn':^5}{'fp':^5}{'tn':^5}{'recall':^8}{'precision':^11}{'f1-score':^11}\n"
+            # cls_i = "{i:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}\
+            #             {ppr:<7.2f}{recall:<7.2f}{f1s:<7.2f}\n"
+        for idx, sm in metric_dic.items():
+            f.write(f"{idx:^50}")
             f.write('\n')
-            for idx, line in enumerate(cm):
-                row_preds = "".join(([f'{idx:<4}']+[f"{i:<4}" for i in line]))
-                f.write(row_preds)
+            for j in sm['cm']:
+                f.write('  '.join(map(str, j.tolist())))
                 f.write('\n')
+            f.write('\n')
+            f.write(head)
+            tp, fn, fp, tn = sm['tp'], sm['fn'], sm['fp'], sm['tn']
+            ppr, recall, f1s = sm['precision'], sm['recall'], sm['f1-score']
+            cls_i = "{:^5}{:^5}{:^5}{:^5}{:^5}{:^8.2f}{:^11.2f}{:^11.2f}\n"
+            acc_i = "acc{:>48.2f}\n"
+            mcc_i = "mcc{:>48.2f}"
+            for i in range(len(tp)):
+                line = (i, tp[i], fn[i], fp[i], tn[i], recall[i], ppr[i], f1s[i])
+                f.write(cls_i.format(*line))
+            f.write(acc_i.format(sm['acc']))
+            f.write(mcc_i.format(sm['mcc']))
             f.write("\n")
-            
-            kfi = f"{mcm_idx}\n"
-            f.write(kfi)
-            col = f"     {'tp':<4}{'fn':<4}{'fp':<4}{'tn':<4}{'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
-            f.write(col)
-            for pos_idx, line in enumerate(sub_mcm):
-                (tn, fp), (fn, tp) = line
-                accl, snl, spl, ppvl, mccl = sub_metric[mcm_idx]
-                acc, sn, sp, ppv, mcc = accl[pos_idx]*100, snl[pos_idx]*100, spl[pos_idx]*100, ppvl[pos_idx]*100, mccl[pos_idx]*100
-                linei = f"{pos_idx:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
-                f.write(linei)  
-            f.write("\n\n")
-        else:
-            mean_mcm = np.mean(mcm, axis=0)
-            mean_metric = np.mean(sub_metric, axis=0)
-            f.write("mean\n")
-            col = f"     {'tp':<4}{'fn':<4}{'fp':<4}{'tn':<4}{'sn':<7}{'sp':<7}{'ppv':<7}{'acc':<7}{'mcc':<7}\n"
-            f.write(col)
-            for pos_idx, line in enumerate(mean_mcm):
-                (tn, fp), (fn, tp) = line
-                accl, snl, spl, ppvl, mccl = mean_metric
-                acc, sn, sp, ppv, mcc = accl[pos_idx]*100, snl[pos_idx]*100, spl[pos_idx]*100, ppvl[pos_idx]*100, mccl[pos_idx]*100
-                linei = f"{pos_idx:<5}{tp:<4.1f}{fn:<4.1f}{fp:<4.1f}{tn:<4.1f}{sn:<7.2f}{sp:<7.2f}{ppv:<7.2f}{acc:<7.2f}{mcc:<7.2f}\n"
-                f.write(linei)  
-            f.write("\n\n")
-        f.write(TEXT)
-        f.write("\n\n")
-        for fold_idx, y_labels in enumerate(zip(y_true, y_pre)):
-            kfi = f"{fold_idx}\n"
-            f.write(kfi)
-            for label in zip(*y_labels):
-                f.write(",".join(map(str, label)))
-                f.write("\n")
-            f.write("\n\n")
+            f.write("-"*50)
+            f.write("\n")
+        f.write("\n")
+
+
 
 def k_roc_curve_plot(y_true, y_prob, out):
     if len(np.unique(y_true[0])) != 2:
