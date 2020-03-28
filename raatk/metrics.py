@@ -4,7 +4,8 @@
 metrics.py
 ~~~~~~~~~~~~
 """
-
+import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import  StratifiedKFold
 from sklearn.metrics import accuracy_score
@@ -12,6 +13,7 @@ from sklearn.metrics import matthews_corrcoef
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import confusion_matrix, multilabel_confusion_matrix
 from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import roc_curve, auc, RocCurveDisplay, plot_roc_curve
 
 
 
@@ -44,3 +46,59 @@ def cv_metrics(clf, x, y, cv):
         sub_yt, sub_yp = y[test_idx], y_pred[test_idx]
         result[idx] = _metrics(sub_yt, sub_yp)
     return result
+
+def cv_roc_curve_plot(clf, x, y, cv):
+    tprs = []
+    aucs = []        
+    mean_fpr = np.linspace(0, 1, len(y))
+    fig, ax = plt.subplots()
+    cver = StratifiedKFold(n_splits=cv)
+    for i,(train_idx, test_idx) in enumerate(cver.split(x, y)):
+        clf.fit(x[train_idx], y[train_idx])
+        viz = plot_roc_curve(clf, x[test_idx], y[test_idx],ax=ax,
+							name=f"ROC fold {i}", alpha=.3, lw=1,)
+        interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+        tprs.append(interp_tpr)
+        aucs.append(viz.roc_auc)    
+    ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+        				label='Chance', alpha=.8)
+    mean_fpr = np.linspace(0, 1, len(y))
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+    std_auc = np.std(aucs)
+    ax.plot(mean_fpr, mean_tpr, color='b',
+            label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+            lw=2, alpha=.8)
+    std_tpr = np.std(tprs, axis=0)
+    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+    ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+                    label=r'$\pm$ 1 std. dev.')
+    ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
+           title="Receiver operating characteristic example")
+    ax.legend(loc="lower right")
+    name =  clf.__class__.__name__
+    viz = RocCurveDisplay(mean_fpr, mean_tpr, mean_auc, name)
+    return viz
+
+def loo_roc_curve_plot(clf, x, y):
+	from functools import partial
+	def loo_proba(i, x, y, clf):
+		clf.fit(x.drop(i), y.drop(i))
+		return clf.predict_proba(x.loc[[i]])[0, 1]
+	func_ = partial(loo_proba, x=x, y=y, clf=clf)
+	y_proba = [func_(i) for i in X.index]
+	fpr, tpr, _ = roc_curve(yt, yp)
+	roc_auc = auc(fpr, tpr)
+	name =  clf.__class__.__name__
+	viz = RocCurveDisplay(fpr, tpr, roc_auc, name)
+	return viz.plot(name=name)
+
+def roc_curve_plot(clf, x, y):
+    y_prob = clf.predict_proba(x)[:, 1]
+    fpr, tpr, _ = roc_curve(y, y_prob)
+    roc_auc = auc(fpr, tpr)
+    name =  clf.__class__.__name__
+    viz = RocCurveDisplay(fpr, tpr, roc_auc, name)
+    return viz.plot(name=name)

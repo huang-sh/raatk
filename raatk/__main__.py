@@ -281,16 +281,30 @@ def parse_eval(args, sub_parser):
     eval_args.func(eval_args)
 
 def sub_roc(args):
-    model = ul.load_model(args.model)
-    x, y = ul.load_data(args.file, normal=True)
-    ul.roc_eval(x, y, model, args.output)
+    x, y = ul.load_data(args.file, normal=True)   
+    if args.model:
+        cv = None
+        clf = ul.load_model(args.model)
+    else:
+        cv = args.cv
+        clf = ul.select_clf(args)
+    ul.roc_auc_save(clf, x, y, cv, args.format, args.output)
 
 def parse_roc(args, sub_parser):
-    parser = sub_parser.add_parser('roc', add_help=False, prog='raatk roc')
+    parser = sub_parser.add_parser('roc', add_help=False, prog='raatk roc',
+                                        conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file for roc')
-    parser.add_argument('-m', '--model', required=True, help='model')
+    parser.add_argument('-cv', type=int, default=5, help='cross validation fold')
+    me_group = parser.add_mutually_exclusive_group()
+    me_group.add_argument('-m', '--model', help='model')
+    me_group.add_argument('-clf', '--clf', choices=['svm', 'rf', 'knn'], 
+                                help='classifier selection')
+    fmt_choices = ['eps', 'pdf', 'png', 'ps', 'raw', 'rgba', 'svg', 'txt']
+    parser.add_argument('-fmt', '--format', default="png",
+                            choices=fmt_choices, help='figure format')
     parser.add_argument('-o', '--output', required=True, help='output directory')
+    clf_parser(parser)
     parser.set_defaults(func=sub_roc)
     roc_args = parser.parse_args(args)
     roc_args.func(roc_args)

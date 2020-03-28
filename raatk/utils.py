@@ -8,12 +8,10 @@ from concurrent import futures
 
 import joblib
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import Normalizer
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_curve, RocCurveDisplay, auc, plot_roc_curve
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -21,9 +19,11 @@ from sklearn.ensemble import RandomForestClassifier
 try:
     from . import draw
     from . import feature as fea
+    from . import metrics as mt
 except ImportError:
     import draw
     import feature as fea
+    import metrics as mt
 
 
 
@@ -103,12 +103,10 @@ def reduce(seqs, aa, raa=None):
                 for ele in val:
                     seq = seq.replace(ele, key)
         yield descr, seq
-
-            
+    
 def reduce_to_file(file, aa, output,):
     with output.open("w") as wh:
         rh = open(file, "r")
-        h = csv.writer(wh)
         seqs = read_fasta(rh)
         reduced_seqs = reduce(seqs, aa)
         for descr, r_seq in reduced_seqs:
@@ -178,10 +176,6 @@ def batch_extract(in_dirs, out_dir, k, gap, lam, n_jobs=1):
     extract_fun = partial(feature2file, k=k, gap=gap, lam=lam)
     with Parallel(n_jobs=n_jobs) as pl:
         pl(delayed(extract_fun)(*paras) for paras in parse_filepath(in_dirs, out_dir))
-
-def roc_eval(x, y, model, out):
-    svc_disp = plot_roc_curve(model, x, y)
-    plt.savefig(out, dpi=1000, bbox_inches="tight")
 
 def dic2array(result_dic, key='OA', cls=0):
     acc_ls = []  # all type acc
@@ -331,20 +325,18 @@ def metric_dict2json(all_metric_dic, path):
         result_dic.setdefault(type_dir.name, {})
         for size_dir, cv_metric_dic in zip(type_dir.iterdir(), cv_metric_ls):
             cv = len(cv_metric_dic)
-            zero_arr = np.zeros(cv)
-            f1_score = zero_arr
-            acc, mcc = zero_arr, zero_arr
-            precision, recall = zero_arr, zero_arr
+            acc, mcc = 0, 0
+            precision, recall, f1_score = 0, 0, 0
             for fold, metric in cv_metric_dic.items():
-                precision = np.add(precision, metric["precision"]) / cv
-                recall = np.add(recall, metric["recall"]) / cv
-                f1_score = np.add(f1_score, metric["f1-score"]) / cv
-                acc = np.add(acc, metric["acc"]) / cv
-                mcc = np.add(mcc, metric["mcc"]) / cv
+                precision = np.add(precision, metric["precision"]/cv)
+                recall = np.add(recall, metric["recall"]/cv)
+                f1_score = np.add(f1_score, metric["f1-score"]/cv)
+                acc = np.add(acc, metric["acc"]/cv)
+                mcc = np.add(mcc, metric["mcc"]/cv)
             metric_dic = {
                     'precision': precision.tolist(),
                     'recall': recall.tolist(), 'mcc': mcc.tolist(),
-                    'acc': acc.tolist(),'f1-score': f1_score.tolist(),
+                    'acc': acc.tolist(),'f1-score': f1_score.tolist()
                     }
             if type_dir.name == "naa":
                 naa_metric = metric_dic
@@ -356,6 +348,20 @@ def metric_dict2json(all_metric_dic, path):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(result_dic, f, indent=4)
 
+def roc_auc_save(clf, x, y, cv, fmt, out):
+    if cv is None:
+        viz = mt.roc_curve_plot(clf, x, y)
+    elif cv in (1, -1):
+        viz = mt.loo_roc_curve_plot(clf, x, y)
+    else:
+        viz = mt.cv_roc_curve_plot(clf, x, y, cv)
+    if fmt == 'txt':
+        fpr = viz.fpr.reshape(-1, 1)
+        tpr = viz.fpr.reshape(-1, 1)
+        auc = viz.roc_auc
+        write_array(f"{out}-{auc:.2f}.csv", fpr, tpr)
+    else:
+        plt.savefig(f"{out}.{fmt}", dpi=1000)
 
 
 TEXT = """
@@ -398,51 +404,6 @@ def save_report(metric_dic, report_file):
             f.write("-"*55)
             f.write("\n")
         f.write("\n")
-
-
-
-def k_roc_curve_plot(y_true, y_prob, out):
-    if len(np.unique(y_true[0])) != 2:
-        exit()
-    fig, ax = plt.subplots()
-    k_fold = len(y_true)
-    num = sum(map(len, y_true))
-    mean_fpr = np.linspace(0, 1, num)
-    tprs = []
-    aucs = []
-    for idx, (yt, yp) in enumerate(zip(y_true, y_prob)):
-        fpr, tpr, _ = roc_curve(yt, yp)
-        roc_auc = auc(fpr, tpr)
-        viz = RocCurveDisplay(fpr, tpr, roc_auc, 'SVM')
-        if k_fold == 1:
-            name = 'ROC'
-        else:
-            name = f'ROC fold {idx}'
-            interp_tpr = np.interp(mean_fpr, fpr, tpr)
-            tprs.append(interp_tpr)
-            aucs.append(roc_auc)            
-        viz.plot(ax=ax, name=name, alpha=0.3, lw=1)
-    ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
-        label='Chance', alpha=.8)
-    if k_fold > 1:
-        mean_tpr = np.mean(tprs, axis=0)
-        mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
-        std_auc = np.std(aucs)
-        ax.plot(mean_fpr, mean_tpr, color='b',
-                label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
-                lw=2, alpha=.8)
-
-        std_tpr = np.std(tprs, axis=0)
-        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-        ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
-                        label=r'$\pm$ 1 std. dev.')
-
-        ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
-               title="Receiver operating characteristic example")
-        ax.legend(loc="lower right")
-    plt.savefig(out)
 
 def filter_args(kwargs, clf_params):
     params = *kwargs,

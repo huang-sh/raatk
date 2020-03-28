@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 from functools import partial
-from concurrent import futures
 
 import joblib
 import numpy as np
@@ -56,7 +54,7 @@ def batch_train(in_dir, out_dir, C, gamma, n_job):
 def predict(x, model):
     y_pred = model.predict(x)
     try:
-        y_prob = model.predict_proba(x)  ## 模型训练 probability=True才能用
+        y_prob = model.predict_proba(x) ## 模型训练 probability=True才能用
     except:
         y_prob = None
     return y_pred, y_prob
