@@ -347,8 +347,10 @@ def parse_plot(args, sub_parser):
     parser = sub_parser.add_parser('plot', add_help=False, prog='raatk plot')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='the result json file')
-    parser.add_argument('-fmt', '--format', default="png", help='figure format')
-    # parser.add_argument('-dpi', default=600, type=int, help='figure format')
+    fmt_choices = ['eps', 'pdf', 'png', 'ps', 'raw', 'rgba', 'svg']
+    parser.add_argument('-fmt', '--format', default="png",
+                            choices=fmt_choices, help='figure format')
+    # parser.add_argument('-dpi', default=1000, type=int, help='figure format')
     parser.add_argument('-o', '--outdir', required=True, help='output directory')
     parser.set_defaults(func=sub_plot)
     plot_args = parser.parse_args(args)
