@@ -142,41 +142,44 @@ def parse_extract(args, sub_parser):
     extract_args.func(extract_args)
 
 def sub_hpo(args):
+    pass
     # a(**dict(args._get_kwargs()))
-    params = ul.param_grid(args.C, args.gamma)
-    x, y = ul.load_data(args.file, normal=True)
-    best_c, best_gamma = cp.grid_search(x, y, params)
-    print("C: %s, gamma: %s" % (best_c, best_gamma))
+    # params = ul.param_grid(args.C, args.gamma)
+    # x, y = ul.load_data(args.file, normal=True)
+    # best_c, best_gamma = cp.grid_search(x, y, params)
+    # print("C: %s, gamma: %s" % (best_c, best_gamma))
 
+#TODO
 def parse_hpo(args, sub_parser):
-    parser = sub_parser.add_parser('hpo', add_help=False, prog='raatk hpo')
-    parser.add_argument('-h', '--help', action='help')
-    parser.add_argument('file', help='feature file for hpyper-parameter optimization')
-    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rbf', 'knn'],
-                                    help='classifier selection')
-    parser.add_argument('-jobs','--n_jobs', type=int, help='the number of parallel jobs to run')
+    pass
+    # parser = sub_parser.add_parser('hpo', add_help=False, prog='raatk hpo')
+    # parser.add_argument('-h', '--help', action='help')
+    # parser.add_argument('file', help='feature file for hpyper-parameter optimization')
+    # parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rbf', 'knn'],
+    #                                 help='classifier selection')
+    # parser.add_argument('-jobs','--n_jobs', type=int, help='the number of parallel jobs to run')
 
-    knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
-    knn.add_argument('--n_neighbors', type=int, nargs='+',
-                        help='number of neighbors [start stop step]')
-    knn.add_argument('--weights', choices=['uniform', 'distance'], default=['uniform'], 
-                        nargs='+', help='weight function used in prediction') 
-    knn.add_argument('--algorithm', choices=['auto', 'ball_tree', 'kd_tree', 'brute'], nargs='+',
-                        default=['auto'], help='algorithm used to compute the nearest neighbors')
-    knn.add_argument('--leaf_size', type=int, default=30,
-                        help='leaf size passed to BallTree or KDTree')
+    # knn = parser.add_argument_group('KNN', description='K-nearest neighbors classifier')
+    # knn.add_argument('--n_neighbors', type=int, nargs='+',
+    #                     help='number of neighbors [start stop step]')
+    # knn.add_argument('--weights', choices=['uniform', 'distance'], default=['uniform'], 
+    #                     nargs='+', help='weight function used in prediction') 
+    # knn.add_argument('--algorithm', choices=['auto', 'ball_tree', 'kd_tree', 'brute'], nargs='+',
+    #                     default=['auto'], help='algorithm used to compute the nearest neighbors')
+    # knn.add_argument('--leaf_size', type=int, default=30,
+    #                     help='leaf size passed to BallTree or KDTree')
 
-    svm = parser.add_argument_group('SVM', description='Parameters for SVM classifier')
-    svm.add_argument('-c', '--C-range',  nargs='+', required=True, type=int,
-                            help='regularization parameter value range [start, stop, [num]]')
-    svm.add_argument('-g', '--gamma-range', nargs='+', required=True, type=int,
-                            help='Kernel coefficient value range [start, stop, [num]]')
-    svm.add_argument('--kernel', nargs='+', required=True, choices=['rbf', 'linear'],
-                            help='kernel function')
+    # svm = parser.add_argument_group('SVM', description='Parameters for SVM classifier')
+    # svm.add_argument('-c', '--C-range',  nargs='+', required=True, type=int,
+    #                         help='regularization parameter value range [start, stop, [num]]')
+    # svm.add_argument('-g', '--gamma-range', nargs='+', required=True, type=int,
+    #                         help='Kernel coefficient value range [start, stop, [num]]')
+    # svm.add_argument('--kernel', nargs='+', required=True, choices=['rbf', 'linear'],
+    #                         help='kernel function')
     
-    parser.set_defaults(func=sub_hpo)
-    hpo_args = parser.parse_args(args)
-    hpo_args.func(hpo_args)
+    # parser.set_defaults(func=sub_hpo)
+    # hpo_args = parser.parse_args(args)
+    # hpo_args.func(hpo_args)
 
 def clf_parser(parser):
     svm = parser.add_argument_group('SVM', description='Parameters for SVM classifier')
