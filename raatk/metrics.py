@@ -1,42 +1,19 @@
+# -*- coding: utf-8 -*-
 
+"""
+metrics.py
+~~~~~~~~~~~~
+"""
 
-
-from sklearn import datasets, linear_model
 from sklearn.model_selection import cross_val_predict
-from sklearn.svm import SVC
-from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
-
+from sklearn.model_selection import  StratifiedKFold
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import matthews_corrcoef
-from sklearn.metrics import classification_report
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import confusion_matrix, multilabel_confusion_matrix
-
 from sklearn.model_selection import LeaveOneOut
 
-# loo = LeaveOneOut()
 
-
-# diabetes = datasets.load_iris()
-# X = diabetes.data[:146]
-# y = diabetes.target[:146]
-# k5 = loo#StratifiedKFold(n_splits=10)
-# svc = SVC(random_state=1, probability=True)
-# y_pred1 = cross_val_predict(svc, X, y, cv=k5, method='predict_proba')[:,1]
-
-# # print(y_pred)
-# # print(type(y_pred))
-# # print(y)
-# print()
-# import numpy as np
-
-# new = np.zeros(y.shape[0])
-
-# for train_idx, test_idx in k5.split(X, y):
-# 	svc.fit(X[train_idx], y[train_idx])
-# 	y_pred = svc.predict_proba(X[test_idx])[:,1]
-# 	new[test_idx] = y_pred
-# 	print(test_idx)
 
 def _metrics(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred)
@@ -67,7 +44,3 @@ def cv_metrics(clf, x, y, cv):
         sub_yt, sub_yp = y[test_idx], y_pred[test_idx]
         result[idx] = _metrics(sub_yt, sub_yp)
     return result
-
-
-
-

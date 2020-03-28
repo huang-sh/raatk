@@ -373,13 +373,13 @@ TEXT = """
               
 def save_report(metric_dic, report_file):
     with open(report_file, "w", encoding="utf-8") as f:
-        head = f"     {'tp':^5}{'fn':^5}{'fp':^5}{'tn':^5}{'recall':^8}{'precision':^11}{'f1-score':^11}\n"
-            # cls_i = "{i:<5}{tp:<4}{fn:<4}{fp:<4}{tn:<4}\
-            #             {ppr:<7.2f}{recall:<7.2f}{f1s:<7.2f}\n"
+        head = (f"     {'tp':^5}{'fn':^5}{'fp':^5}{'tn':^5}" +
+                f"{'recall':^8}{'precision':^11}{'f1-score':^11}\n")
         for idx, sm in metric_dic.items():
             f.write(f"{idx:^50}")
             f.write('\n')
-            for j in sm['cm']:
+            for i, j in enumerate(sm['cm']):
+                f.write(f"{i:<4}")
                 f.write('  '.join(map(str, j.tolist())))
                 f.write('\n')
             f.write('\n')
@@ -395,7 +395,7 @@ def save_report(metric_dic, report_file):
             f.write(acc_i.format(sm['acc']))
             f.write(mcc_i.format(sm['mcc']))
             f.write("\n")
-            f.write("-"*50)
+            f.write("-"*55)
             f.write("\n")
         f.write("\n")
 
