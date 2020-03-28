@@ -1,5 +1,5 @@
 # RAATK
-A python-based reduce amino acid toolkit of machine learning for protein-dependent inference.
+A command line toolkit for reducing amino acid sequence and extracting sequence feature, and also using for evaluating the different amino acid alphabets and constructing sequence classifier. 
 
 Installation
 ------------
