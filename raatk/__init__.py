@@ -1,2 +1,5 @@
-__version__ = '1.2.0'
+# -*- coding: utf-8 -*-
+
+__author__ = 'huangsh'
+__version__ = '1.2.3'
 

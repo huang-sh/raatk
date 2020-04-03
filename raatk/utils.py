@@ -186,8 +186,8 @@ def dic2array(result_dic, key='OA', cls=0):
         type_ = result_dic[ti]
         score_size_ls = []
         for size in range(2, 21):
-            key_scores = type_.get(str(size), {key: [0]*10}).get(key, 0)
-            score = key_scores[cls] if key_scores else 0  
+            key_scores = type_.get(str(size), {key: 0}).get(key)
+            score = key_scores[cls] if isinstance(key_scores, list) else key_scores
             score_size_ls.append(score)
         all_score_array[idx] = score_size_ls
     return all_score_array, type_ls
@@ -317,27 +317,30 @@ def param_grid(c, g):
     params = [{'kernel': ["rbf"], 'C': c_range,
                     'gamma': gamma_range}]
     return params
-    
+
+def mean_metric(cv_metric_dic):
+    cv = len(cv_metric_dic)
+    acc, mcc = 0, 0
+    precision, recall, f1_score = 0, 0, 0
+    for fold, metric in cv_metric_dic.items():
+        precision = np.add(precision, metric["precision"]/cv)
+        recall = np.add(recall, metric["recall"]/cv)
+        f1_score = np.add(f1_score, metric["f1-score"]/cv)
+        acc = np.add(acc, metric["acc"]/cv)
+        mcc = np.add(mcc, metric["mcc"]/cv)
+    metric_dic = {
+        'precision': precision.tolist(),
+        'recall': recall.tolist(), 'mcc': mcc.tolist(),
+        'acc': acc.tolist(),'f1-score': f1_score.tolist()}
+    return metric_dic
+
 def metric_dict2json(all_metric_dic, path):
     result_dic = {}
     naa_metric = {}
     for type_dir, cv_metric_ls in all_metric_dic.items():
         result_dic.setdefault(type_dir.name, {})
         for size_dir, cv_metric_dic in zip(type_dir.iterdir(), cv_metric_ls):
-            cv = len(cv_metric_dic)
-            acc, mcc = 0, 0
-            precision, recall, f1_score = 0, 0, 0
-            for fold, metric in cv_metric_dic.items():
-                precision = np.add(precision, metric["precision"]/cv)
-                recall = np.add(recall, metric["recall"]/cv)
-                f1_score = np.add(f1_score, metric["f1-score"]/cv)
-                acc = np.add(acc, metric["acc"]/cv)
-                mcc = np.add(mcc, metric["mcc"]/cv)
-            metric_dic = {
-                    'precision': precision.tolist(),
-                    'recall': recall.tolist(), 'mcc': mcc.tolist(),
-                    'acc': acc.tolist(),'f1-score': f1_score.tolist()
-                    }
+            metric_dic = mean_metric(cv_metric_dic)
             if type_dir.name == "naa":
                 naa_metric = metric_dic
             else:

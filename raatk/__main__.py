@@ -277,7 +277,7 @@ def parse_eval(args, sub_parser):
     parser.add_argument('-cv', type=int, default=5, help='cross validation fold')
     parser.add_argument('-o', '--output', required=True, help='output directory')
     parser.add_argument('-p', '--process',type=int, choices=list([i for i in range(1, os.cpu_count())]),
-                                 default=int(os.cpu_count()/2), help='cpu numbers')     
+                                 default=1, help='cpu numbers')     
     clf_parser(parser)
     parser.set_defaults(func=sub_eval)
     eval_args = parser.parse_args(args)
@@ -324,7 +324,8 @@ def sub_ifs(args):
             result_ls, sort_idx = cp.feature_select(x, y, step, cv, clf, n_jobs)
             x_tricks = [i for i in range(0, x.shape[1], step)]
             x_tricks.append(x.shape[1])
-            acc_ls = [0] + [i["OA"] for i in result_ls]
+            mean_mt = ul.mean_metric
+            acc_ls = [0] + [mean_mt(i)['acc'] for i in result_ls]
             max_acc = max(acc_ls)
             best_n = acc_ls.index(max_acc) * step
             draw.p_fs(x_tricks, acc_ls, out + '.png', max_acc=max_acc, best_n=best_n)
@@ -348,7 +349,7 @@ def parse_ifs(args, sub_parser):
     parser.add_argument('-o', '--output', nargs='+', required=True, help='output folder')
     parser.add_argument('-mix', action='store_true', help='feature mix')
     parser.add_argument('-p', '--process', type=int, choices=range(1, os.cpu_count()),
-                                 default=int(os.cpu_count()/2), help='cpu core number')
+                                 default=1, help='cpu core number')
     clf_parser(parser)
     parser.set_defaults(func=sub_ifs)
     ifs_args = parser.parse_args(args)
