@@ -25,7 +25,7 @@ raatk roc k3/type2/10-ARNCQHIFPW.csv -clf svm -cv 5 -c 2 -g 0.5 -o roc
 raatk ifs k3/type2/10-ARNCQHIFPW.csv -s 2 -clf svm -cv 5 -c 2 -g 0.5 -o ifs
 
 # feature visulization
-raatk fv ifs_best.csv -o ifs-fv
+raatk fv ifs_56-best.csv -o ifs-fv
 
 
 
@@ -33,7 +33,7 @@ raatk fv ifs_best.csv -o ifs-fv
 
 cluster='AGST-RK-ND-C-QE-H-ILMV-FY-P-W'
 raa='ARNCQHIFPW'
-feature='ifs_best.csv'
+feature='ifs_56-best.csv'
 idx='ifs-56-idx.csv'
 model='svm.model'
 testSeq='test_seq.txt'
