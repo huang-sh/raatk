@@ -509,6 +509,8 @@ def sub_comp(args):
         draw.p_univariate_density(f_scores_arr * 100, label=label, ax=ax)
         f.close()
     out = Path(args.output).with_suffix(f".{args.format}")
+    ax.set_xlabel(args.key)
+    ax.set_ylabel('Probability density')
     plt.savefig(out, dpi=1000, bbox_inches="tight")
 
 
@@ -516,7 +518,7 @@ def parse_comp(args, sub_parser):
     parser = sub_parser.add_parser('comp', add_help=False, prog='raatk comp')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', nargs='+', help='json file path,it should be more 1 than file.')
-    parser.add_argument('-k', '--key', choices=['acc', 'mcc', 'f1', 'recall', 'precision'],
+    parser.add_argument('-k', '--key', choices=['acc', 'mcc', 'f1-score', 'recall', 'precision'],
                         default='acc', help='default=acc, evaluation index to compare')
     parser.add_argument('--label', nargs='+', default=[], help='figure label')
     fmt_choices = ['eps', 'pdf', 'png', 'ps', 'raw', 'rgba', 'svg']
