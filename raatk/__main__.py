@@ -500,14 +500,12 @@ def sub_comp(args):
     from itertools import zip_longest
     fig, ax = plt.subplots()
     for idx, (file, label) in enumerate(zip_longest(args.file, args.label)):
-        key = 'acc'
         f = open(file, "r")
         re_dic = json.load(f)
-        scores, types = ul.dic2array(re_dic, key=key)
+        scores, types = ul.dic2array(re_dic, key=args.key)
         f_scores, f_types = ul.filter_type(scores, types, filter_num=8)
         f_scores_arr = f_scores[f_scores > 0]
         label = label if label else idx + 1
-        print(label)
         draw.p_univariate_density(f_scores_arr * 100, label=label, ax=ax)
         f.close()
     out = Path(args.output).with_suffix(f".{args.format}")
