@@ -19,8 +19,8 @@ def p_univariate_density(acc, label="ACC", key='Acc', out=None, ax=None):
         ax = ax
     sns.set_style('whitegrid')
     ax = sns.kdeplot(acc, ax=ax, label=label)
-    ax.set_xlim(40, 100)
-    ax.set_xticks(range(40, 100, 10))
+    ax.set_xlim(0, 100)
+    ax.set_xticks(range(0, 100, 10))
     ax.set_xlabel(key)
     if out:
         plt.savefig(out, dpi=1000, bbox_inches="tight")
