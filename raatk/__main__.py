@@ -228,7 +228,7 @@ def clf_parser(parser):
                         help='the number of trees in the forest, default=100')
     rf.add_argument('-features', '--max_features', default='auto',
                     help='the number of features to consider when looking for the best split,default=auto') 
-    knn.add_argument('-jobs','--n_jobs', type=int, default=1, 
+    rf.add_argument('-jobs','--n_jobs', type=int, default=1, 
                             help='the number of jobs to run in parallel, default=1')
     rf.add_argument('-rs', '--random_state', type=int, default=1, help='random state,default=1')
     return parser
@@ -243,7 +243,7 @@ def parse_train(args, sub_parser):
                                      conflict_handler='resolve')
     parser.add_argument('-h', '--help', action='help')
     parser.add_argument('file', help='feature file to train')
-    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rbf', 'knn'],
+    parser.add_argument('-clf', '--clf', default='svm', choices=['svm', 'rf', 'knn'],
                                 help='classifier selection, default=svm')
     parser.add_argument('-o', '--output',required=True, help='output path')
     parser.add_argument('-jobs','--n_jobs', type=int, default=1, 
@@ -517,9 +517,9 @@ def sub_comp(args):
 def parse_comp(args, sub_parser):
     parser = sub_parser.add_parser('comp', add_help=False, prog='raatk comp')
     parser.add_argument('-h', '--help', action='help')
-    parser.add_argument('file', nargs='+', help='json file path,it should be more 1 than file.')
+    parser.add_argument('file', nargs='+', help='json file path,it should be more than one file.')
     parser.add_argument('-k', '--key', choices=['acc', 'mcc', 'f1-score', 'recall', 'precision'],
-                        default='acc', help='default=acc, evaluation index to compare')
+                        default='acc', help='default=acc, evaluation index for comparing')
     parser.add_argument('--label', nargs='+', default=[], help='figure label')
     fmt_choices = ['eps', 'pdf', 'png', 'ps', 'raw', 'rgba', 'svg']
     parser.add_argument('-fmt', '--format', default="png", choices=fmt_choices, help='figure format, default=png')
